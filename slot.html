@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><title>スロット</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .slot-container { display: flex; gap: 10px; justify-content: center; font-size: 3rem; margin: 20px 0; }
+        .reel { width: 80px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; background: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav><a href="shop.html">ショップ</a> | <a href="slot.html">スロット</a></nav>
+        <h2>ポイントスロット</h2>
+        <div class="point-box">所持: <span id="points">--</span> P</div>
+        
+        <input type="number" id="bet" value="10" min="10"> P 賭ける
+        
+        <div class="slot-container">
+            <div id="r1" class="reel">?</div>
+            <div id="r2" class="reel">?</div>
+            <div id="r3" class="reel">?</div>
+        </div>
+
+        <button id="action-btn">スタート！</button>
+        <p id="msg"></p>
+    </div>
+
+    <script type="module">
+        import { db, getLoggedInTeam } from './config.js';
+        import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        const teamId = getLoggedInTeam();
+        const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
+        let status = "ready"; // ready -> spinning -> stop1 -> stop2 -> result
+        let intervals = [null, null, null];
+        let results = [0, 0, 0];
+
+        onValue(ref(db, `teams/${teamId}/points`), (s) => {
+            document.getElementById('points').innerText = s.val() || 0;
+        });
+
+        const btn = document.getElementById('action-btn');
+        btn.onclick = () => {
+            if (status === "ready") startSlot();
+            else if (status.startsWith("spin") || status.startsWith("stop")) stopNextReel();
+        };
+
+        function startSlot() {
+            const bet = parseInt(document.getElementById('bet').value);
+            const pRef = ref(db, `teams/${teamId}/points`);
+
+            runTransaction(pRef, (p) => {
+                if (p < bet) return;
+                return p - bet;
+            }).then(res => {
+                if(!res.committed) return alert("ポイント不足");
+                
+                status = "spinning";
+                btn.innerText = "1番目を止める！";
+                intervals.forEach((_, i) => {
+                    intervals[i] = setInterval(() => {
+                        results[i] = Math.floor(Math.random() * symbols.length);
+                        document.getElementById(`r${i+1}`).innerText = symbols[results[i]];
+                    }, 100);
+                });
+            });
+        }
+
+        function stopNextReel() {
+            if (intervals[0]) {
+                clearInterval(intervals[0]); intervals[0] = null;
+                btn.innerText = "2番目を止める！";
+            } else if (intervals[1]) {
+                clearInterval(intervals[1]); intervals[1] = null;
+                btn.innerText = "3番目を止める！";
+            } else if (intervals[2]) {
+                clearInterval(intervals[2]); intervals[2] = null;
+                checkResult();
+            }
+        }
+
+        function checkResult() {
+            const bet = parseInt(document.getElementById('bet').value);
+            let win = 0;
+            if (results[0] === results[1] && results[1] === results[2]) {
+                win = results[0] === 4 ? bet * 10 : bet * 5; // 7揃いは10倍
+                document.getElementById('msg').innerText = `大当たり！ ${win}P獲得！`;
+            } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+                win = Math.floor(bet * 1.5);
+                document.getElementById('msg').innerText = `小当たり！ ${win}P獲得！`;
+            } else {
+                document.getElementById('msg').innerText = "残念...";
+            }
+
+            if (win > 0) {
+                runTransaction(ref(db, `teams/${teamId}/points`), p => (p || 0) + win);
+            }
+            btn.innerText = "再挑戦";
+            status = "ready";
+        }
+    </script>
+</body>
+</html>
