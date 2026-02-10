@@ -17,7 +17,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
-export const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1470674709732528260/nHkAC6YkJiQovabG2qMBsD4n8NWpLp9ZFO6ql6PrPvG8-tGV9yAgC2QeWcyR7hfWH3hz";
+export const DISCORD_WEBHOOK_URL = "WEBHOOK_REPLACE_ME";
 
 // チーム定義
 export const TEAMS = {
