@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><title>ログイン</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>チームログイン</h1>
+        <input type="text" id="login-id" placeholder="チームID">
+        <input type="password" id="login-pass" placeholder="パスワード">
+        <button id="login-btn">ログイン</button>
+    </div>
+
+    <script type="module">
+        import { TEAMS } from './config.js';
+        document.getElementById('login-btn').onclick = () => {
+            const id = document.getElementById('login-id').value;
+            const pass = document.getElementById('login-pass').value;
+            if (TEAMS[id] && TEAMS[id].pass === pass) {
+                localStorage.setItem('teamId', id);
+                window.location.href = 'shop.html';
+            } else {
+                alert("IDまたはパスワードが違います");
+            }
+        };
+    </script>
+</body>
+</html>
