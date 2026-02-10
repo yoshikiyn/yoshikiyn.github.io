@@ -1,25 +1,58 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches: ["main"]
+
+  # 手動で実行できるボタンを追加（デバッグ用）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      # ▼▼▼ ここが修正ポイント ▼▼▼
       - name: Inject Webhook URL
+        env:
+          # GitHubに登録したシークレットを環境変数に読み込む
+          MY_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          # config.js 内の WEBHOOK_REPLACE_ME をシークレットで置換
-          sed -i 's|WEBHOOK_REPLACE_ME|${{ secrets.DISCORD_WEBHOOK }}|g' config.js
+          # 念のためファイルがあるか確認（無ければエラーで止まる）
+          ls -l config.js
           
+          # sedコマンドで置換（区切り文字にURLで使われない "|" を使用）
+          sed -i "s|WEBHOOK_REPLACE_ME|$MY_WEBHOOK_URL|g" config.js
+          
+          # 確認用：置換された行を表示（URL部分は *** で隠されますが、行が表示されれば成功）
+          grep "DISCORD_WEBHOOK_URL" config.js
+      # ▲▲▲ ここまで ▲▲▲
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
