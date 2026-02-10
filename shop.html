@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><title>ショップ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <nav><a href="shop.html">ショップ</a> | <a href="slot.html">スロット</a></nav>
+        <h2 id="team-display"></h2>
+        <div class="point-box">所持ポイント: <span id="points">--</span> P</div>
+
+        <div id="item-list" class="item-grid"></div>
+    </div>
+
+    <script type="module">
+        import { db, getLoggedInTeam, TEAMS, DISCORD_WEBHOOK_URL } from './config.js';
+        import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        const teamId = getLoggedInTeam();
+        if (teamId) {
+            document.getElementById('team-display').innerText = TEAMS[teamId].name;
+            onValue(ref(db, `teams/${teamId}/points`), (s) => {
+                document.getElementById('points').innerText = s.val() || 0;
+            });
+        }
+
+        const ITEMS = [
+            { id: 1, name: "カップラーメン", cost: 100, img: "cupnoodle.png" },
+            { id: 2, name: "コンビニ権利", cost: 200, img: "lawson.png" },
+            { id: 3, name: "Switch", cost: 500, img: "switch.png" }
+        ];
+
+        const list = document.getElementById('item-list');
+        ITEMS.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "item-card";
+            div.innerHTML = `
+                <img src="${item.img}" width="64" height="64" alt="${item.name}">
+                <h4>${item.name}</h4>
+                <p>${item.cost} P</p>
+                <button onclick="buy('${item.name}', ${item.cost})">注文する</button>
+            `;
+            list.appendChild(div);
+        });
+
+        window.buy = (name, cost) => {
+            if(!confirm(`${name}を購入しますか？`)) return;
+            const pRef = ref(db, `teams/${teamId}/points`);
+            runTransaction(pRef, (p) => {
+                if (p < cost) return;
+                return p - cost;
+            }).then(res => {
+                if(res.committed) {
+                    fetch(DISCORD_WEBHOOK_URL, {
+                        method: "POST", 
+                        headers: {"Content-Type":"application/json"},
+                        body: JSON.stringify({content: `🛒 **注文**: ${TEAMS[teamId].name}が「${name}」を購入しました。`})
+                    });
+                    alert("注文が送信されました！");
+                } else { alert("ポイントが足りません"); }
+            });
+        };
+    </script>
+</body>
+</html>
