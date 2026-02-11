@@ -144,9 +144,10 @@ function stopReel(i) {
     }
 }
 
-        function checkResult() {
+function checkResult() {
             const bet = parseInt(document.getElementById('bet').value);
             let win = 0; let label = "残念...";
+            
             if (results[0] === results[1] && results[1] === results[2]) {
                 win = results[0] === 4 ? bet * 10 : bet * 3;
                 label = "🎊 大当たり！";
@@ -156,27 +157,34 @@ function stopReel(i) {
             }
             document.getElementById('msg').innerText = win > 0 ? `${label} (+${win}P)` : label;
 
+            // ★ ここで関数を呼び出す必要があります！
+            updatePersonalStats(bet, win);
+
             // Webhook通知 (スロット専用)
             fetch(SLOT_WEBHOOK_URL, {
                 method: "POST", headers: {"Content-Type":"application/json"},
                 body: JSON.stringify({ content: `🎰 **SLOT**: ${user.teamName}の${user.name}さんの結果: ${label} (賭け:${bet} / 獲得:${win})` })
             });
 
-            function updatePersonalStats(bet, win) {
-                const statsRef = ref(db, `user_stats/${user.id}`);
-                runTransaction(statsRef, (current) => {
-                    if (current === null) {
-                        return { total_bet: bet, total_win: win };
-                    }
-                    return {
-                        total_bet: (current.total_bet || 0) + bet,
-                        total_win: (current.total_win || 0) + win
-                    };
-                });
-            }
-
+            // 当たった場合はチームポイントを更新
             if (win > 0) runTransaction(ref(db, `teams/${user.teamId}/points`), p => (p || 0) + win);
-            isPlaying = false; startBtn.disabled = false;
+            
+            isPlaying = false; 
+            startBtn.disabled = false;
+        }
+
+        // 関数は checkResult の外に出しておくとスッキリします
+        function updatePersonalStats(bet, win) {
+            const statsRef = ref(db, `user_stats/${user.id}`);
+            runTransaction(statsRef, (current) => {
+                if (current === null) {
+                    return { total_bet: bet, total_win: win };
+                }
+                return {
+                    total_bet: (current.total_bet || 0) + bet,
+                    total_win: (current.total_win || 0) + win
+                };
+            });
         }
     </script>
 </body>
