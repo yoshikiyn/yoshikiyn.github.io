@@ -38,7 +38,7 @@
                 <button id="stop2" class="stop-btn" disabled>STOP</button>
             </div>
         </div>
-        
+        <div id="toast" class="toast-err"></div>
         <p id="msg" style="text-align: center; font-weight: bold; font-size: 1.4em; min-height: 1.5em; color: #d9534f;"></p>
     </div>
 
@@ -80,13 +80,13 @@ const stopBtns = [
 startBtn.onclick = () => {
     if (isPlaying) return;
     const bet = parseInt(document.getElementById('bet').value);
-    if (isNaN(bet) || bet < 10) return alert("10Pからのみ賭けられます。");
+    if (isNaN(bet) || bet < 10) return showToast("10Pからのみ賭けられます");
 
     runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
         if (p < bet) return; 
         return p - bet;
     }).then(res => {
-        if(!res.committed) return alert("ポイント不足");
+        if(!res.committed) return showToast("ポイント不足です");
         
         isPlaying = true; 
         startBtn.disabled = true;
@@ -180,6 +180,20 @@ function checkResult() {
                 };
             });
         }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            if (!t) return;
+        
+            t.innerText = msg;
+            t.classList.add('show');
+            
+            // 3秒後に消す
+            setTimeout(() => {
+                t.classList.remove('show');
+            }, 3000);
+        }
+        
         document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
     </script>
 </body>
