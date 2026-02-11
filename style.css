@@ -129,6 +129,31 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     pointer-events: auto;
 }
 
+.toast-err {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    background: rgba(217, 83, 79, 0.95); 
+    color: white;
+    padding: 12px 30px;
+    border-radius: 30px;
+    transition: all 0.4s ease;
+    z-index: 10000;
+    font-size: 0.9em;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(217, 83, 79, 0.3);
+}
+
+.toast-err.show {
+    bottom: 40px;
+    opacity: 1;
+    visibility: visible;
+}
+
 /* ボタンの見た目調整 */
 .btn-primary { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; }
 .btn-secondary { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; }
