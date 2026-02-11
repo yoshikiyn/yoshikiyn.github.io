@@ -5,55 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>アイテムショップ</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        #user-badge { text-align: right; padding: 10px; font-size: 0.9em; color: #555; background: #eee; border-radius: 5px; margin-bottom: 15px; }
-        .item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .item-card { background: #fff; border: 1px solid #ddd; padding: 15px; text-align: center; border-radius: 8px; transition: transform 0.2s; }
-        .item-card:active { transform: scale(0.98); }
-        .item-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
-        .item-card h4 { margin: 10px 0 5px 0; }
-        .item-card p { color: #28a745; font-weight: bold; margin-bottom: 10px; }
-        .item-card button { width: 100%; background: #28a745; }
-    </style>
 </head>
 <body>
     <div class="container">
-        <div id="user-badge">
-            <span id="display-team">読み込み中...</span>：<strong id="display-name"></strong> さん
-            <br>
-            <a href="#" id="logout-link" style="font-size: 0.8em; color: #999;">ログアウト</a>
-        </div>
-
         <nav>
-            <a href="shop.html" class="active">ショップ</a> | 
-            <a href="slot.html">スロット</a>
+            <a href="shop.html" class="active">
+                <img src="shop_icon.png" alt="ショップ">
+                ショップ
+            </a>
+            <a href="slot.html">
+                <img src="slot_icon.png" alt="スロット">
+                スロット
+            </a>
         </nav>
 
-        <h2>アイテム購入</h2>
-        <div class="point-box">チーム所持ポイント: <span id="points">--</span> P</div>
+        <div id="user-badge">
+            <span id="display-team">読み込み中...</span>：<strong id="display-name"></strong> さん
+            <a href="#" id="logout-link">ログアウト</a>
+        </div>
 
-        <div id="item-list" class="item-grid">
-            </div>
+        <h2>アイテム購入</h2>
+        <div class="point-box">チーム所持: <span id="points">--</span> P</div>
+
+        <div id="item-list" class="item-grid"></div>
     </div>
 
     <script type="module">
-        import { db, getUserInfo, DISCORD_WEBHOOK_URL } from './config.js';
+        // ▼▼▼ SHOP_WEBHOOK_URL をインポート ▼▼▼
+        import { db, getUserInfo, SHOP_WEBHOOK_URL } from './config.js';
         import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        //ログイン情報の取得
         const user = getUserInfo();
         if (user) {
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
-            
-            // チームの共有ポイントをリアルタイム監視
-            const pointRef = ref(db, `teams/${user.teamId}/points`);
-            onValue(pointRef, (snapshot) => {
-                document.getElementById('points').innerText = snapshot.val() || 0;
+            onValue(ref(db, `teams/${user.teamId}/points`), (s) => {
+                document.getElementById('points').innerText = s.val() || 0;
             });
         }
 
-        //アイテムリストの設定
+        // アイテム定義 
         const ITEMS = [
             { id: 1, name: "湖畔へ車移動", cost: 50, img: "car.png" },
             { id: 2, name: "コンビニ権", cost: 500, img: "lawson.png" },
@@ -61,56 +52,36 @@
             { id: 4, name: "スイッチ", cost: 1000, img: "switch.png" }
         ];
 
-        // 3. ショップ画面の生成
         const listContainer = document.getElementById('item-list');
         ITEMS.forEach(item => {
-            const card = document.createElement('div');
-            card.className = "item-card";
-            card.innerHTML = `
-                <img src="${item.img}" alt="${item.name}">
-                <h4>${item.name}</h4>
-                <p>${item.cost} P</p>
-                <button onclick="purchase('${item.name}', ${item.cost})">注文する</button>
+            listContainer.innerHTML += `
+                <div class="item-card">
+                    <img src="${item.img}" alt="${item.name}">
+                    <h4>${item.name}</h4>
+                    <p>${item.cost} P</p>
+                    <button onclick="purchase('${item.name}', ${item.cost})">注文する</button>
+                </div>
             `;
-            listContainer.appendChild(card);
         });
 
-        //購入処理（個人名を含めたWebhook通知）
         window.purchase = (itemName, cost) => {
-            if (!confirm(`【確認】\n${itemName}を${cost}Pで購入しますか？\n(Discordに通知されます)`)) return;
-
+            if (!confirm(`${itemName}を${cost}Pで購入しますか？`)) return;
             const pRef = ref(db, `teams/${user.teamId}/points`);
-
-            runTransaction(pRef, (currentPoints) => {
-                if (currentPoints === null || currentPoints < cost) return; 
-                return currentPoints - cost;
+            runTransaction(pRef, (p) => {
+                if (p === null || p < cost) return; 
+                return p - cost;
             }).then((result) => {
-                if (!result.committed) {
-                    alert("ポイントが足りません！");
-                } else {
-                    // Discord通知の送信
-                    const discordMsg = `🛒 **アイテム注文通知**\n━━━━━━━━━━━━\n**チーム**: ${user.teamName}\n**注文者**: ${user.name} さん\n**内容**: ${itemName}\n**消費**: ${cost} P`;
-                    
-                    fetch(DISCORD_WEBHOOK_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ content: discordMsg })
+                if (!result.committed) { alert("ポイントが足りません！"); } else {
+                    // ショップ専用Webhookへ送信
+                    fetch(SHOP_WEBHOOK_URL, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ content: `🛒 **注文**: ${user.teamName} の ${user.name} さんが「${itemName}」を購入 (-${cost}P)` })
                     });
-
-                    alert(`${itemName}を注文しました！管理者の指示に従ってください。`);
+                    alert("購入しました！");
                 }
-            }).catch(err => {
-                console.error(err);
-                alert("通信エラーが発生しました。");
             });
         };
-
-        // ログアウト処理
-        document.getElementById('logout-link').onclick = (e) => {
-            e.preventDefault();
-            localStorage.removeItem('userId');
-            window.location.href = 'login.html';
-        };
+        document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
     </script>
 </body>
 </html>
