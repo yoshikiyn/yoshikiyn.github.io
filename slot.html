@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLOT GAME</title>
+    <title>???</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <style>
@@ -13,7 +13,6 @@
         opacity: 0;
         transition: opacity 0.5s;
     }
-    /* 解除時に表示するためのクラス */
     .container.is-visible {
         visibility: visible;
         opacity: 1;
@@ -22,13 +21,13 @@
 <body>
     <div id="slot-lock-overlay" class="modal-overlay">
         <div class="modal-card">
-            <h3>???? UNLOCK</h3>
+            <h3>??? UNLOCK</h3>
             <p>パスワードを入力してください</p>
             <input type="text" id="slot-pw-input" placeholder="パスワードを入力..." 
                    style="width: 85%; padding: 12px; margin: 15px 0; font-size: 1.1em; text-align: center; border: 2px solid #ddd; border-radius: 8px;">
             
             <div class="modal-btns" style="flex-direction: column; gap: 10px;">
-                <button id="unlock-btn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 0.9em;">解除</button>
+                <button id="unlock-btn" class="btn-primary" style="width: 100%; padding: 12px;">解除</button>
                 <button id="lock-back-btn" class="btn-secondary" style="width: 100%; padding: 10px; font-size: 0.9em;">
                     ショップへ戻る
                 </button>
@@ -92,18 +91,13 @@
             const container = document.querySelector('.container');
             const lockError = document.getElementById('lock-error');
 
-            // --- 修正ポイント：セッション内フラグ ---
             let isAlreadyUnlockedInThisSession = false;
 
-            // ユーザー情報の表示
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
             
-            // 解除状態のリアルタイム同期
             onValue(unlockRef, (s) => {
-                // すでに解除済みの場合は、その後のDB変動（トランザクション中の空データ等）を無視する
                 if (isAlreadyUnlockedInThisSession) return;
-
                 const isUnlocked = s.val() === true;
                 if (isUnlocked) {
                     isAlreadyUnlockedInThisSession = true;
@@ -114,13 +108,11 @@
                 }
             });
 
-            // チームポイントのリアルタイム同期
             onValue(pointsRef, (snapshot) => {
                 const currentPoints = snapshot.val() || 0;
                 document.getElementById('points').innerText = currentPoints.toLocaleString();
             });
 
-            // 解除ボタン
             document.getElementById('unlock-btn').onclick = () => {
                 const val = document.getElementById('slot-pw-input').value;
                 if (val === SECRET_PW) {
@@ -166,11 +158,9 @@
                 return p - bet;
             }).then(res => {
                 if(!res.committed) return showToast("ポイント不足です");
-                
                 isPlaying = true; 
                 startBtn.disabled = true;
                 document.getElementById('msg').innerText = "回転中...";
-                
                 intervals.forEach((_, i) => {
                     results[i] = null;
                     intervals[i] = setInterval(() => {
@@ -189,8 +179,20 @@
             intervals[i] = null;
             stopBtns[i].disabled = true;
 
+            const winRate = getWinRate();
+
+            // ★修正：確率0の時、2個目の時点で1個目とずらす
+            if (winRate <= 0 && i === 1) {
+                const r0 = document.getElementById('r0').innerText;
+                let r1 = document.getElementById('r1').innerText;
+                // 1個目と同じなら違うのが出るまで回す
+                while (r1 === r0) {
+                    r1 = symbols[Math.floor(Math.random() * symbols.length)];
+                }
+                document.getElementById('r1').innerText = r1;
+            }
+
             if (i === 2) {
-                const winRate = getWinRate();
                 const dice = Math.random() * 100;
                 const r0 = document.getElementById('r0').innerText;
                 const r1 = document.getElementById('r1').innerText;
@@ -199,6 +201,7 @@
                 if (dice < winRate) {
                     r2 = r0; 
                 } else {
+                    // 抽選外れ時、r0ともr1とも被らせない（完全なハズレ目を作る）
                     while (r2 === r0 || r2 === r1) {
                         r2 = symbols[Math.floor(Math.random() * symbols.length)];
                     }
@@ -232,7 +235,6 @@
             });
 
             if (win > 0) runTransaction(ref(db, `teams/${user.teamId}/points`), p => (p || 0) + win);
-            
             isPlaying = false; 
             startBtn.disabled = false;
         }
