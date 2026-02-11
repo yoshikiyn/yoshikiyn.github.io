@@ -5,41 +5,125 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .login-card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+
+        .login-card h1 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+            color: #333;
+        }
+
+        .login-card p {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+
+        #login-btn {
+            width: 140px;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 10px;
+        }
+
+        #login-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        #login-btn:active {
+            transform: translateY(0);
+        }
+
+        #error-msg {
+            color: #d93025;
+            font-size: 0.85rem;
+            margin-top: 20px;
+            min-height: 1.2em;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>班員ログイン</h1>
-        <p>IDとパスワードを入力してください。</p>
+    <div class="login-card">
+        <h1>ログイン</h1>
+        <p>IDとパスワードを入力してください</p>
         
-        <div style="margin-top: 20px;">
-            <input type="text" id="login-id" placeholder="ID (例: d01)" style="width: 100%; margin-bottom: 10px; padding: 10px;">
-            <input type="password" id="login-pass" placeholder="パスワード" style="width: 100%; margin-bottom: 20px; padding: 10px;">
-            <button id="login-btn" style="width: 100%; font-size: 1.1em;">ログイン</button>
+        <div class="input-group">
+            <input type="text" id="login-id" placeholder="ID (例: a01)">
+        </div>
+        <div class="input-group">
+            <input type="password" id="login-pass" placeholder="パスワード">
         </div>
         
-        <p id="error-msg" class="error" style="text-align: center; margin-top: 15px;"></p>
+        <button id="login-btn">ログイン</button>
+        
+        <p id="error-msg"></p>
     </div>
 
     <script type="module">
         import { USERS } from './config.js';
 
-        document.getElementById('login-btn').onclick = () => {
-            const id = document.getElementById('login-id').value;
-            const pass = document.getElementById('login-pass').value;
-            const errorEl = document.getElementById('error-msg');
+        const loginBtn = document.getElementById('login-btn');
+        const errorEl = document.getElementById('error-msg');
 
-            // USERSリストにIDが存在し、パスワードが一致するか確認
+        loginBtn.onclick = () => {
+            const id = document.getElementById('login-id').value.trim();
+            const pass = document.getElementById('login-pass').value;
+
             if (USERS[id] && USERS[id].pass === pass) {
-                // セッション代わりにlocalStorageに個人IDを保存
                 localStorage.setItem('userId', id);
-                // ショップ画面へ遷移
                 window.location.href = 'shop.html';
             } else {
                 errorEl.innerText = "IDまたはパスワードが正しくありません。";
             }
         };
 
-        // すでにログインしている場合は自動遷移
         if (localStorage.getItem('userId')) {
             window.location.href = 'shop.html';
         }
