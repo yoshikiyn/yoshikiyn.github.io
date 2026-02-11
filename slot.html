@@ -1,20 +1,29 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8"><title>スロット</title>
+    <meta charset="UTF-8">
+    <title>スロット</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .slot-container { display: flex; gap: 10px; justify-content: center; font-size: 3rem; margin: 20px 0; }
-        .reel { width: 80px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; background: #fff; }
+        .reel { width: 80px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 8px; }
+        #user-badge { text-align: right; padding: 10px; font-size: 0.9em; color: #555; background: #eee; border-radius: 5px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
     <div class="container">
+        <div id="user-badge">
+            <span id="display-team"></span>：<strong id="display-name"></strong> さん
+        </div>
+
         <nav><a href="shop.html">ショップ</a> | <a href="slot.html">スロット</a></nav>
         <h2>ポイントスロット</h2>
+        
         <div class="point-box">所持: <span id="points">--</span> P</div>
         
-        <input type="number" id="bet" value="10" min="10"> P 賭ける
+        <div style="margin: 20px 0;">
+            <input type="number" id="bet" value="10" min="10" style="width: 80px; padding: 5px;"> P 賭ける
+        </div>
         
         <div class="slot-container">
             <div id="r1" class="reel">?</div>
@@ -22,42 +31,53 @@
             <div id="r3" class="reel">?</div>
         </div>
 
-        <button id="action-btn">スタート！</button>
-        <p id="msg"></p>
+        <button id="action-btn" style="width: 100%; font-size: 1.2em;">スタート！</button>
+        <p id="msg" style="text-align: center; font-weight: bold; font-size: 1.2em; margin-top: 15px;"></p>
     </div>
 
     <script type="module">
-        import { db, getLoggedInTeam } from './config.js';
+        import { db, getUserInfo, DISCORD_WEBHOOK_URL } from './config.js';
         import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        const teamId = getLoggedInTeam();
+        // 1. ログイン情報の取得
+        const user = getUserInfo();
+        if (user) {
+            document.getElementById('display-team').innerText = user.teamName;
+            document.getElementById('display-name').innerText = user.name;
+            
+            // ポイントのリアルタイム監視
+            onValue(ref(db, `teams/${user.teamId}/points`), (s) => {
+                document.getElementById('points').innerText = s.val() || 0;
+            });
+        }
+
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
-        let status = "ready"; // ready -> spinning -> stop1 -> stop2 -> result
+        let status = "ready"; 
         let intervals = [null, null, null];
         let results = [0, 0, 0];
-
-        onValue(ref(db, `teams/${teamId}/points`), (s) => {
-            document.getElementById('points').innerText = s.val() || 0;
-        });
 
         const btn = document.getElementById('action-btn');
         btn.onclick = () => {
             if (status === "ready") startSlot();
-            else if (status.startsWith("spin") || status.startsWith("stop")) stopNextReel();
+            else if (status === "spinning" || status.startsWith("stop")) stopNextReel();
         };
 
         function startSlot() {
             const bet = parseInt(document.getElementById('bet').value);
-            const pRef = ref(db, `teams/${teamId}/points`);
+            if (isNaN(bet) || bet < 10) return alert("10P以上賭けてください");
+
+            const pRef = ref(db, `teams/${user.teamId}/points`);
 
             runTransaction(pRef, (p) => {
-                if (p < bet) return;
-                return p - bet;
+                if (p < bet) return; // ポイント不足
+                return p - bet; 
             }).then(res => {
-                if(!res.committed) return alert("ポイント不足");
+                if(!res.committed) return alert("ポイントが足りません！");
                 
                 status = "spinning";
                 btn.innerText = "1番目を止める！";
+                document.getElementById('msg').innerText = "回転中...";
+                
                 intervals.forEach((_, i) => {
                     intervals[i] = setInterval(() => {
                         results[i] = Math.floor(Math.random() * symbols.length);
@@ -83,20 +103,34 @@
         function checkResult() {
             const bet = parseInt(document.getElementById('bet').value);
             let win = 0;
+            let resultLabel = "ハズレ";
+
+            // 判定ロジック
             if (results[0] === results[1] && results[1] === results[2]) {
-                win = results[0] === 4 ? bet * 10 : bet * 5; // 7揃いは10倍
-                document.getElementById('msg').innerText = `大当たり！ ${win}P獲得！`;
+                win = results[0] === 4 ? bet * 10 : bet * 5; 
+                resultLabel = "🎊 大当たり";
             } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
                 win = Math.floor(bet * 1.5);
-                document.getElementById('msg').innerText = `小当たり！ ${win}P獲得！`;
-            } else {
-                document.getElementById('msg').innerText = "残念...";
+                resultLabel = "✨ 当たり";
             }
 
+            document.getElementById('msg').innerText = `${resultLabel}！ ${win}P 獲得！`;
+
+            // 2. 結果に依らずDiscordへ通知を飛ばす
+            const discordMsg = `🎰 **スロットログ**\n━━━━━━━━━━━━\n**チーム**: ${user.teamName}\n**名前**: ${user.name} さん\n**結果**: ${resultLabel}\n**使用**: ${bet} P / **獲得**: ${win} P`;
+            
+            fetch(DISCORD_WEBHOOK_URL, {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({ content: discordMsg })
+            });
+
+            // 当たった場合はポイントをDBに戻す
             if (win > 0) {
-                runTransaction(ref(db, `teams/${teamId}/points`), p => (p || 0) + win);
+                runTransaction(ref(db, `teams/${user.teamId}/points`), p => (p || 0) + win);
             }
-            btn.innerText = "再挑戦";
+
+            btn.innerText = "もう一度遊ぶ";
             status = "ready";
         }
     </script>
