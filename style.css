@@ -49,9 +49,9 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     /* 背景画像の「窓」の場所に重なるまで、
        以下のパーセンテージを 1% ずつ細かく調整してください。
     */
-    top: 28%;    /* 上からの位置 */
+    top: 30%;    /* 上からの位置 */
     left: 12%;   /* 左からの位置 */
-    width: 76%;  /* 窓の横幅 */
+    width: 74%;  /* 窓の横幅 */
     height: 18%; /* 窓の高さ */
     
     display: flex;
@@ -75,7 +75,7 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
 /* 4. ストップボタンの配置（背景のボタンに合わせる） */
 .buttons-container {
     position: absolute;
-    bottom: 22%; /* 背景画像のボタンがある位置まで上げる/下げる */
+    bottom: 25%; /* 背景画像のボタンがある位置まで上げる/下げる */
     left: 10%;
     width: 80%;
     display: flex;
