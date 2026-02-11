@@ -85,32 +85,26 @@
             const lockError = document.getElementById('lock-error');
         
             onValue(unlockRef, (s) => {
-                if (s.val() === true) {
-                    overlay.style.display = 'none';
-                    // スロット本体を表示させる処理（前回の unlocked-view クラスなど）
-                    document.querySelectorAll('.slot-machine-wrapper, #start-btn, .point-box')
-                            .forEach(el => el.style.visibility = 'visible');
+                const isUnlocked = s.val() === true;
+                const overlay = document.getElementById('slot-lock-overlay');
+                
+                // スロットに関連する要素をまとめて取得
+                const mainElements = document.querySelectorAll('.slot-machine-wrapper, #start-btn, .point-box, #user-badge, nav');
+            
+                if (isUnlocked) {
+                    // すでに解除済みの場合
+                    overlay.style.display = 'none'; // ロック画面は出さない
+                    
+                    // スロット本体を「見える化」する
+                    mainElements.forEach(el => el.classList.add('is-visible'));
                 } else {
-                    overlay.style.display = 'flex';
+                    // まだ未解除の場合
+                    overlay.style.display = 'flex'; // ここで初めてロック画面を出す
+                    
+                    // スロット本体は隠したまま
+                    mainElements.forEach(el => el.classList.remove('is-visible'));
                 }
             });
-        
-            unlockBtn.onclick = () => {
-                console.log("Unlock clicked");
-                if (pwInput.value === SECRET_PW) {
-                    set(unlockRef, true).catch(err => {
-                        console.error(err);
-                        lockError.innerText = "通信エラーが発生しました。";
-                    });
-                } else {
-                    lockError.innerText = "パスワードが正しくありません。";
-                    pwInput.value = "";
-                }
-            };
-        
-            backBtn.onclick = () => {
-                window.location.href = 'shop.html';
-            };
         }
 
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
