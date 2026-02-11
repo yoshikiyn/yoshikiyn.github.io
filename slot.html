@@ -9,11 +9,16 @@
 <body>
     <div id="slot-lock-overlay" class="modal-overlay">
         <div class="modal-card">
-            <h3>???? UNLOCK</h3>
+            <h3>??? UNLOCK</h3>
             <p>パスワードを入力してください</p>
-            <input type="text" id="slot-pw-input" placeholder="パスワードを入力..." style="width: 80%; padding: 10px; margin: 15px 0; font-size: 1.2em; text-align: center; border: 2px solid #ddd; border-radius: 8px;">
-            <div class="modal-btns">
-                <button id="unlock-btn" class="btn-primary">解除</button>
+            <input type="text" id="slot-pw-input" placeholder="パスワードを入力..." 
+                   style="width: 85%; padding: 12px; margin: 15px 0; font-size: 1.1em; text-align: center; border: 2px solid #ddd; border-radius: 8px;">
+            
+            <div class="modal-btns" style="flex-direction: column; gap: 10px;">
+                <button id="unlock-btn" class="btn-primary" style="width: 100%; padding: 12px;">解除</button>
+                <button id="lock-back-btn" class="btn-secondary" style="width: 100%; padding: 10px; font-size: 0.9em;">
+                    ショップへ戻る
+                </button>
             </div>
             <p id="lock-error" style="color: #d9534f; font-size: 0.8em; margin-top: 10px;"></p>
         </div>
@@ -54,41 +59,50 @@
     <div id="toast" class="toast-err"></div>
     <script type="module">
         import { db, getUserInfo, SLOT_WEBHOOK_URL } from './config.js';
-        import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        import { ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
         const user = getUserInfo();
         const SECRET_PW = "password";
+        
         if (user) {
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
             onValue(ref(db, `teams/${user.teamId}/points`), s => document.getElementById('points').innerText = s.val() || 0);
-
+        
             const unlockRef = ref(db, `user_stats/${user.id}/slot_unlocked`);
             const overlay = document.getElementById('slot-lock-overlay');
             const unlockBtn = document.getElementById('unlock-btn');
+            const backBtn = document.getElementById('lock-back-btn');
             const pwInput = document.getElementById('slot-pw-input');
             const lockError = document.getElementById('lock-error');
         
             onValue(unlockRef, (s) => {
-                const isUnlocked = s.val() === true;
-                const overlay = document.getElementById('slot-lock-overlay');
-                const wrapper = document.querySelector('.slot-machine-wrapper');
-                const startBtn = document.getElementById('start-btn');
-                const pointBox = document.querySelector('.point-box');
-            
-                if (isUnlocked) {
-                    // 解除済みなら
-                    overlay.style.display = 'none'; // ロックを消す
-                    
-                    // 本体を表示する（一気に見せる）
-                    [wrapper, startBtn, pointBox].forEach(el => {
-                        if(el) el.classList.add('unlocked-view');
-                    });
+                if (s.val() === true) {
+                    overlay.style.display = 'none';
+                    // スロット本体を表示させる処理（前回の unlocked-view クラスなど）
+                    document.querySelectorAll('.slot-machine-wrapper, #start-btn, .point-box')
+                            .forEach(el => el.style.visibility = 'visible');
                 } else {
-                    // 未解除なら
-                    overlay.style.display = 'flex'; // ロックを出し続ける
+                    overlay.style.display = 'flex';
                 }
             });
+        
+            unlockBtn.onclick = () => {
+                console.log("Unlock clicked");
+                if (pwInput.value === SECRET_PW) {
+                    set(unlockRef, true).catch(err => {
+                        console.error(err);
+                        lockError.innerText = "通信エラーが発生しました。";
+                    });
+                } else {
+                    lockError.innerText = "パスワードが正しくありません。";
+                    pwInput.value = "";
+                }
+            };
+        
+            backBtn.onclick = () => {
+                window.location.href = 'shop.html';
+            };
         }
 
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
