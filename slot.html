@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>???</title>
+    <title>SLOT GAME</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <style>
@@ -11,12 +11,18 @@
     .container {
         visibility: hidden;
         opacity: 0;
+        transition: opacity 0.5s;
+    }
+    /* 解除時に表示するためのクラス */
+    .container.is-visible {
+        visibility: visible;
+        opacity: 1;
     }
 </style>
 <body>
     <div id="slot-lock-overlay" class="modal-overlay">
         <div class="modal-card">
-            <h3>??? UNLOCK</h3>
+            <h3>SLOT UNLOCK</h3>
             <p>パスワードを入力してください</p>
             <input type="text" id="slot-pw-input" placeholder="パスワードを入力..." 
                    style="width: 85%; padding: 12px; margin: 15px 0; font-size: 1.1em; text-align: center; border: 2px solid #ddd; border-radius: 8px;">
@@ -30,10 +36,11 @@
             <p id="lock-error" style="color: #d9534f; font-size: 0.8em; margin-top: 10px;"></p>
         </div>
     </div>
+
     <div class="container">
         <nav>
             <a href="shop.html"><img src="shop_icon.png" alt="Shop">ショップ</a>
-            <a href="slot.html" class="active"><img src="slot_icon.png" alt="???">？？？</a>
+            <a href="slot.html" class="active"><img src="slot_icon.png" alt="Slot">スロット</a>
         </nav>
 
         <div id="user-badge">
@@ -64,158 +71,147 @@
         <p id="msg" style="text-align: center; font-weight: bold; font-size: 1.4em; min-height: 1.5em; color: #d9534f;"></p>
     </div>
     <div id="toast" class="toast-err"></div>
+
     <script type="module">
         import { db, getUserInfo, SLOT_WEBHOOK_URL } from './config.js';
         import { ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
- const user = getUserInfo();
-    if (!user) {
-        window.location.href = 'login.html';
-        // ここで処理を中断して真っ白を防ぐ
-    } else {
-        // --- ログインしている場合のみ実行 ---
-        initSlotPage();
-    }
+        const user = getUserInfo();
+        if (!user) {
+            window.location.href = 'login.html';
+        } else {
+            initSlotPage();
+        }
 
-    async function initSlotPage() {
-        const SECRET_PW = "password"; // ここを実際のパスワードに
-        const unlockRef = ref(db, `user_stats/${user.id}/slot_unlocked`);
-        
-        const overlay = document.getElementById('slot-lock-overlay');
-        const container = document.querySelector('.container');
-        const unlockBtn = document.getElementById('unlock-btn');
-        const backBtn = document.getElementById('lock-back-btn');
-        const pwInput = document.getElementById('slot-pw-input');
+        async function initSlotPage() {
+            const SECRET_PW = "password"; 
+            const unlockRef = ref(db, `user_stats/${user.id}/slot_unlocked`);
+            const pointsRef = ref(db, `teams/${user.teamId}/points`);
+            
+            const overlay = document.getElementById('slot-lock-overlay');
+            const container = document.querySelector('.container');
+            const lockError = document.getElementById('lock-error');
 
-        // チーム名と名前の表示
-        document.getElementById('display-team').innerText = user.teamName;
-        document.getElementById('display-name').innerText = user.name;
-        
-        // ポイントのリアルタイム同期
-        onValue(unlockRef, (s) => {
-            const isUnlocked = s.val() === true;
+            // --- 修正ポイント：セッション内フラグ ---
+            let isAlreadyUnlockedInThisSession = false;
 
-            if (isUnlocked) {
-                // 【解除済みの場合】
-                if(overlay) overlay.style.display = 'none';      // ロック画面は出さない
-                if(container) container.classList.add('is-visible'); // スロット本体を出す
-            } else {
-                // 【未解除の場合】
-                if(overlay) overlay.style.display = 'flex';     // ここで初めてロック画面を出す
-                // container は hidden のままなのでスロットは見えない
-            }
-        });
+            // ユーザー情報の表示
+            document.getElementById('display-team').innerText = user.teamName;
+            document.getElementById('display-name').innerText = user.name;
+            
+            // 解除状態のリアルタイム同期
+            onValue(unlockRef, (s) => {
+                // すでに解除済みの場合は、その後のDB変動（トランザクション中の空データ等）を無視する
+                if (isAlreadyUnlockedInThisSession) return;
 
-        // 解除ボタンの処理
-        document.getElementById('unlock-btn').onclick = () => {
-            const val = document.getElementById('slot-pw-input').value;
-            if (val === SECRET_PW) {
-                set(unlockRef, true);
-            } else {
-                document.getElementById('lock-error').innerText = "パスワードが違います";
-            }
-        };
+                const isUnlocked = s.val() === true;
+                if (isUnlocked) {
+                    isAlreadyUnlockedInThisSession = true;
+                    if(overlay) overlay.style.display = 'none';
+                    if(container) container.classList.add('is-visible');
+                } else {
+                    if(overlay) overlay.style.display = 'flex';
+                }
+            });
 
-        // ショップへ戻るボタン
-        document.getElementById('lock-back-btn').onclick = () => {
-            window.location.href = 'shop.html';
-        };
+            // チームポイントのリアルタイム同期
+            onValue(pointsRef, (snapshot) => {
+                const currentPoints = snapshot.val() || 0;
+                document.getElementById('points').innerText = currentPoints.toLocaleString();
+            });
 
-                
-        const pointsRef = ref(db, `teams/${user.teamId}/points`);
-        onValue(pointsRef, (snapshot) => {
-            const currentPoints = snapshot.val() || 0;
-            document.getElementById('points').innerText = currentPoints.toLocaleString();
-        });
-        
-    }
+            // 解除ボタン
+            document.getElementById('unlock-btn').onclick = () => {
+                const val = document.getElementById('slot-pw-input').value;
+                if (val === SECRET_PW) {
+                    set(unlockRef, true);
+                } else {
+                    lockError.innerText = "パスワードが違います";
+                }
+            };
+
+            document.getElementById('lock-back-btn').onclick = () => { window.location.href = 'shop.html'; };
+        }
+
+        // --- スロットロジック ---
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
         let intervals = [null, null, null];
         let results = [null, null, null];
         let isPlaying = false;
         let currentSettings = {};
 
-        // 確率設定をFirebaseから常時取得
         onValue(ref(db, 'settings'), s => { currentSettings = s.val() || {}; });
 
-        // 現在の勝率を計算 (時間連動 or 手動)
         function getWinRate() {
             if (currentSettings.mode === "manual") return currentSettings.manual_rate;
             const now = new Date();
             const ratio = (now.getHours() * 60 + now.getMinutes()) / 1439;
-            return currentSettings.auto_min + (currentSettings.auto_max - currentSettings.auto_min) * ratio;
+            return (currentSettings.auto_min || 0) + ((currentSettings.auto_max || 0) - (currentSettings.auto_min || 0)) * ratio;
         }
 
-const startBtn = document.getElementById('start-btn');
-const stopBtns = [
-    document.getElementById('stop0'), 
-    document.getElementById('stop1'), 
-    document.getElementById('stop2')
-];
+        const startBtn = document.getElementById('start-btn');
+        const stopBtns = [
+            document.getElementById('stop0'), 
+            document.getElementById('stop1'), 
+            document.getElementById('stop2')
+        ];
 
-startBtn.onclick = () => {
-    if (isPlaying) return;
-    const bet = parseInt(document.getElementById('bet').value);
-    if (isNaN(bet) || bet < 10) return showToast("10Pからのみ賭けられます");
+        startBtn.onclick = () => {
+            if (isPlaying) return;
+            const bet = parseInt(document.getElementById('bet').value);
+            if (isNaN(bet) || bet < 10) return showToast("10Pからのみ賭けられます");
 
-    runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
-        if (p < bet) return; 
-        return p - bet;
-    }).then(res => {
-        if(!res.committed) return showToast("ポイント不足です");
-        
-        isPlaying = true; 
-        startBtn.disabled = true;
-        document.getElementById('msg').innerText = "回転中...";
-        
-        // 全リールを回転させる
-        intervals.forEach((_, i) => {
-            results[i] = null; // 結果をリセット
-            intervals[i] = setInterval(() => {
-                document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
-            }, 80);
-            
+            runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
+                if (p < bet) return; 
+                return p - bet;
+            }).then(res => {
+                if(!res.committed) return showToast("ポイント不足です");
+                
+                isPlaying = true; 
+                startBtn.disabled = true;
+                document.getElementById('msg').innerText = "回転中...";
+                
+                intervals.forEach((_, i) => {
+                    results[i] = null;
+                    intervals[i] = setInterval(() => {
+                        document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                    }, 80);
+                    stopBtns[i].disabled = true;
+                    stopBtns[i].onclick = () => stopReel(i);
+                });
+                stopBtns[0].disabled = false;
+            });
+        };
+
+        function stopReel(i) {
+            if (!intervals[i]) return;
+            clearInterval(intervals[i]); 
+            intervals[i] = null;
             stopBtns[i].disabled = true;
-            stopBtns[i].onclick = () => stopReel(i);
-        });
 
-        // 1番目のボタンだけを有効にする
-        stopBtns[0].disabled = false;
-    });
-};
+            if (i === 2) {
+                const winRate = getWinRate();
+                const dice = Math.random() * 100;
+                const r0 = document.getElementById('r0').innerText;
+                const r1 = document.getElementById('r1').innerText;
+                let r2 = document.getElementById('r2').innerText;
 
-function stopReel(i) {
-    if (!intervals[i]) return;
-    clearInterval(intervals[i]); 
-    intervals[i] = null;
-    stopBtns[i].disabled = true;
-
-    if (i === 2) {
-        const winRate = getWinRate(); // 0 ～ 100
-        const dice = Math.random() * 100;
-
-        const r0 = document.getElementById('r0').innerText;
-        const r1 = document.getElementById('r1').innerText;
-        let r2 = document.getElementById('r2').innerText;
-
-        if (dice < winRate) {
-            r2 = r0; 
-            document.getElementById('r2').innerText = r2;
-        } else {
-            while (r2 === r0 || r2 === r1) {
-                r2 = symbols[Math.floor(Math.random() * symbols.length)];
+                if (dice < winRate) {
+                    r2 = r0; 
+                } else {
+                    while (r2 === r0 || r2 === r1) {
+                        r2 = symbols[Math.floor(Math.random() * symbols.length)];
+                    }
+                }
+                document.getElementById('r2').innerText = r2;
+                results = [0, 1, 2].map(idx => symbols.indexOf(document.getElementById(`r${idx}`).innerText));
+                checkResult();
+            } else {
+                stopBtns[i + 1].disabled = false;
             }
-            document.getElementById('r2').innerText = r2;
         }
-        
-        results = [0, 1, 2].map(idx => symbols.indexOf(document.getElementById(`r${idx}`).innerText));
-        checkResult();
-    } else {
-        stopBtns[i + 1].disabled = false;
-    }
-}
 
-function checkResult() {
+        function checkResult() {
             const bet = parseInt(document.getElementById('bet').value);
             let win = 0; let label = "残念...";
             
@@ -230,13 +226,11 @@ function checkResult() {
 
             updatePersonalStats(bet, win);
 
-            // Webhook通知 (スロット専用)
             fetch(SLOT_WEBHOOK_URL, {
                 method: "POST", headers: {"Content-Type":"application/json"},
                 body: JSON.stringify({ content: `🎰 **SLOT**: ${user.teamName}の${user.name}さんの結果: ${label} (賭け:${bet} / 獲得:${win})` })
             });
 
-            // 当たった場合はチームポイントを更新
             if (win > 0) runTransaction(ref(db, `teams/${user.teamId}/points`), p => (p || 0) + win);
             
             isPlaying = false; 
@@ -246,9 +240,7 @@ function checkResult() {
         function updatePersonalStats(bet, win) {
             const statsRef = ref(db, `user_stats/${user.id}`);
             runTransaction(statsRef, (current) => {
-                if (current === null) {
-                    return { total_bet: bet, total_win: win, counter:1 };
-                }
+                if (current === null) return { total_bet: bet, total_win: win, counter: 1, slot_unlocked: true };
                 return {
                     ...current,
                     total_bet: (current.total_bet || 0) + bet,
@@ -261,14 +253,9 @@ function checkResult() {
         function showToast(msg) {
             const t = document.getElementById('toast');
             if (!t) return;
-        
             t.innerText = msg;
             t.classList.add('show');
-            
-            // 3秒後に消す
-            setTimeout(() => {
-                t.classList.remove('show');
-            }, 3000);
+            setTimeout(() => { t.classList.remove('show'); }, 3000);
         }
         
         document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
