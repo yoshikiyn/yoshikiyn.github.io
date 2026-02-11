@@ -47,6 +47,7 @@
 
         const user = getUserInfo();
         if (user) {
+            console.log("ログイン中のユーザーID:", user.id);
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
             onValue(ref(db, `teams/${user.teamId}/points`), s => document.getElementById('points').innerText = s.val() || 0);
@@ -175,6 +176,7 @@ function checkResult() {
 
         // 関数は checkResult の外に出しておくとスッキリします
         function updatePersonalStats(bet, win) {
+            console.log("よびだされたよ");
             const statsRef = ref(db, `user_stats/${user.id}`);
             runTransaction(statsRef, (current) => {
                 if (current === null) {
@@ -184,6 +186,10 @@ function checkResult() {
                     total_bet: (current.total_bet || 0) + bet,
                     total_win: (current.total_win || 0) + win
                 };
+            }).then(() => {
+                console.log("DB更新成功:", user.id);
+            }).catch(err => {
+                console.error("DB更新エラー:", err);
             });
         }
     </script>
