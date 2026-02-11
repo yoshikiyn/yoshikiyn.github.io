@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>管理者画面</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+        .admin-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
+        .admin-row strong { font-size: 1.2em; color: #28a745; }
+        input[type="number"], select { padding: 5px; font-size: 1em; }
+        .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <script>
+        // 設定したいパスワード
+        const ADMIN_PASSWORD = "admin"; 
+    
+        // ページ読み込み時にパスワード入力を求める
+        const input = prompt("管理用パスワードを入力してください");
+    
+        if (input !== ADMIN_PASSWORD) {
+            alert("パスワードが違います。アクセス権限がありません。");
+            // パスワードが違う場合はトップページに飛ばす
+            window.location.href = "login.html";
+            
+            // 念のため、bodyを空にする（読み込みを一瞬止めるため）
+            document.documentElement.style.display = "none";
+        }
+    </script>
+    <div class="container">
+        <h1>管理者用パネル</h1>
+
+        <div class="admin-section">
+            <h2>チームポイント管理</h2>
+            <div id="admin-list">Loading...</div>
+        </div>
+
+        <div class="admin-section">
+            <h2>スロット確率設定</h2>
+            
+            <div class="admin-row">
+                <span>動作モード</span>
+                <select id="mode-select">
+                    <option value="auto">時間連動（自動）</option>
+                    <option value="manual">数値指定（手動上書き）</option>
+                </select>
+            </div>
+
+            <div id="manual-area" class="admin-row">
+                <span>手動設定レート</span>
+                <div><input type="number" id="manual-rate" min="0" max="100"> %</div>
+            </div>
+
+            <div id="auto-area">
+                <div class="admin-row">
+                    <span>自動最小値 (00:00)</span>
+                    <div><input type="number" id="auto-min" min="0" max="100"> %</div>
+                </div>
+                <div class="admin-row">
+                    <span>自動最大値 (23:59)</span>
+                    <div><input type="number" id="auto-max" min="0" max="100"> %</div>
+                </div>
+            </div>
+
+            <button id="save-settings" class="btn-save">設定を保存して反映</button>
+        </div>
+        
+        <p style="text-align: center;"><a href="shop.html">ショップ画面へ戻る</a></p>
+    </div>
+
+    <script type="module">
+        import { db, TEAMS } from './config.js';
+        import { ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        // --- ポイント管理ロジック ---
+        const listDiv = document.getElementById('admin-list');
+        onValue(ref(db, 'teams'), (snapshot) => {
+            const data = snapshot.val() || {};
+            listDiv.innerHTML = "";
+            Object.keys(TEAMS).forEach(teamId => {
+                const points = (data[teamId] && data[teamId].points !== undefined) ? data[teamId].points : 0;
+                const row = document.createElement('div');
+                row.className = "admin-row";
+                row.innerHTML = `
+                    <span>${TEAMS[teamId].name}</span>
+                    <div>
+                        <strong>${points} P</strong>
+                        <button onclick="window.updatePoints('${teamId}', ${points})">変更</button>
+                    </div>
+                `;
+                listDiv.appendChild(row);
+            });
+        });
+
+        window.updatePoints = (teamId, currentVal) => {
+            const newVal = prompt(`${TEAMS[teamId].name} のポイントを入力`, currentVal);
+            if (newVal !== null && !isNaN(parseInt(newVal))) {
+                set(ref(db, `teams/${teamId}/points`), parseInt(newVal));
+            }
+        };
+
+        // --- 確率設定ロジック ---
+        const fields = {
+            mode: document.getElementById('mode-select'),
+            manual: document.getElementById('manual-rate'),
+            min: document.getElementById('auto-min'),
+            max: document.getElementById('auto-max')
+        };
+
+        onValue(ref(db, 'settings'), (snapshot) => {
+            const data = snapshot.val() || {};
+            fields.mode.value = data.mode || "auto";
+            fields.manual.value = data.manual_rate || 10;
+            fields.min.value = data.auto_min || 5;
+            fields.max.value = data.auto_max || 30;
+        });
+
+        document.getElementById('save-settings').onclick = () => {
+            update(ref(db, 'settings'), {
+                mode: fields.mode.value,
+                manual_rate: parseInt(fields.manual.value),
+                auto_min: parseInt(fields.min.value),
+                auto_max: parseInt(fields.max.value)
+            }).then(() => alert("確率設定を更新しました！"));
+        };
+    </script>
+</body>
+</html>
