@@ -47,7 +47,6 @@
 
         const user = getUserInfo();
         if (user) {
-            console.log("ログイン中のユーザーID:", user.id);
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
             onValue(ref(db, `teams/${user.teamId}/points`), s => document.getElementById('points').innerText = s.val() || 0);
@@ -80,7 +79,7 @@ const stopBtns = [
 startBtn.onclick = () => {
     if (isPlaying) return;
     const bet = parseInt(document.getElementById('bet').value);
-    if (isNaN(bet) || bet < 10) return alert("10P以上で！");
+    if (isNaN(bet) || bet < 10) return alert("10Pからのみ賭けられます。");
 
     runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
         if (p < bet) return; 
@@ -99,7 +98,6 @@ startBtn.onclick = () => {
                 document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
             }, 80);
             
-            // 重要：最初はすべてのストップボタンを無効化
             stopBtns[i].disabled = true;
             stopBtns[i].onclick = () => stopReel(i);
         });
@@ -124,20 +122,15 @@ function stopReel(i) {
         let r2 = document.getElementById('r2').innerText;
 
         if (dice < winRate) {
-            // 【強制当選】1枚目と揃える
             r2 = r0; 
             document.getElementById('r2').innerText = r2;
         } else {
-            // 【強制落選】もし1枚目か2枚目と被っていたら、強制的に変える
-            // 確率設定が低い（0%など）場合はこちらが動く
             while (r2 === r0 || r2 === r1) {
-                // 被らなくなるまでランダムに選び直す
                 r2 = symbols[Math.floor(Math.random() * symbols.length)];
             }
             document.getElementById('r2').innerText = r2;
         }
         
-        // 最終的な見た目を結果として確定
         results = [0, 1, 2].map(idx => symbols.indexOf(document.getElementById(`r${idx}`).innerText));
         checkResult();
     } else {
@@ -158,7 +151,6 @@ function checkResult() {
             }
             document.getElementById('msg').innerText = win > 0 ? `${label} (+${win}P)` : label;
 
-            // ★ ここで関数を呼び出す必要があります！
             updatePersonalStats(bet, win);
 
             // Webhook通知 (スロット専用)
@@ -174,9 +166,7 @@ function checkResult() {
             startBtn.disabled = false;
         }
 
-        // 関数は checkResult の外に出しておくとスッキリします
         function updatePersonalStats(bet, win) {
-            console.log("よびだされたよ");
             const statsRef = ref(db, `user_stats/${user.id}`);
             runTransaction(statsRef, (current) => {
                 if (current === null) {
@@ -186,10 +176,6 @@ function checkResult() {
                     total_bet: (current.total_bet || 0) + bet,
                     total_win: (current.total_win || 0) + win
                 };
-            }).then(() => {
-                console.log("DB更新成功:", user.id);
-            }).catch(err => {
-                console.error("DB更新エラー:", err);
             });
         }
     </script>
