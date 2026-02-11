@@ -1,10 +1,7 @@
 name: Deploy to GitHub Pages
-
 on:
   push:
     branches: ["main"]
-
-  # 手動で実行できるボタンを追加（デバッグ用）
   workflow_dispatch:
 
 permissions:
@@ -23,21 +20,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ▼▼▼ ここが修正ポイント ▼▼▼
-      - name: Inject Webhook URL
+      - name: Inject Webhook URLs
         env:
-          # GitHubに登録したシークレットを環境変数に読み込む
-          MY_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
+          # 2つのシークレットを読み込む
+          SHOP_URL: ${{ secrets.SHOP_WEBHOOK }}
+          SLOT_URL: ${{ secrets.SLOT_WEBHOOK }}
         run: |
-          # 念のためファイルがあるか確認（無ければエラーで止まる）
-          ls -l config.js
+          # ショップ用Webhookの置換
+          sed -i "s|SHOP_WEBHOOK_REPLACE_ME|$SHOP_URL|g" config.js
+          # スロット用Webhookの置換
+          sed -i "s|SLOT_WEBHOOK_REPLACE_ME|$SLOT_URL|g" config.js
           
-          # sedコマンドで置換（区切り文字にURLで使われない "|" を使用）
-          sed -i "s|WEBHOOK_REPLACE_ME|$MY_WEBHOOK_URL|g" config.js
-          
-          # 確認用：置換された行を表示（URL部分は *** で隠されますが、行が表示されれば成功）
-          grep "DISCORD_WEBHOOK_URL" config.js
-      # ▲▲▲ ここまで ▲▲▲
+          # 確認用（URLは隠れます）
+          grep "_WEBHOOK_URL" config.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
