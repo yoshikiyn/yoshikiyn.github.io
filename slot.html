@@ -2,136 +2,145 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>スロット</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スロットゲーム</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .slot-container { display: flex; gap: 10px; justify-content: center; font-size: 3rem; margin: 20px 0; }
-        .reel { width: 80px; height: 100px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 8px; }
-        #user-badge { text-align: right; padding: 10px; font-size: 0.9em; color: #555; background: #eee; border-radius: 5px; margin-bottom: 15px; }
-    </style>
 </head>
 <body>
     <div class="container">
+        <nav>
+            <a href="shop.html">
+                <img src="shop_icon.png" alt="ショップ">
+                ショップ
+            </a>
+            <a href="slot.html" class="active">
+                <img src="slot_icon.png" alt="スロット">
+                スロット
+            </a>
+        </nav>
+
         <div id="user-badge">
             <span id="display-team"></span>：<strong id="display-name"></strong> さん
         </div>
 
-        <nav><a href="shop.html">ショップ</a> | <a href="slot.html">スロット</a></nav>
         <h2>ポイントスロット</h2>
-        
         <div class="point-box">所持: <span id="points">--</span> P</div>
         
-        <div style="margin: 20px 0;">
-            <input type="number" id="bet" value="10" min="10" style="width: 80px; padding: 5px;"> P 賭ける
+        <div style="text-align: center; margin-bottom: 15px;">
+            <input type="number" id="bet" value="10" min="10" style="width: 80px; padding: 8px; font-size: 1.2em; text-align: center;"> P 賭ける
         </div>
         
-        <div class="slot-container">
-            <div id="r1" class="reel">?</div>
-            <div id="r2" class="reel">?</div>
-            <div id="r3" class="reel">?</div>
-        </div>
+        <button id="start-btn">START SPIN!</button>
 
-        <button id="action-btn" style="width: 100%; font-size: 1.2em;">スタート！</button>
-        <p id="msg" style="text-align: center; font-weight: bold; font-size: 1.2em; margin-top: 15px;"></p>
+        <div class="slot-machine-wrapper">
+            <div class="reels-container">
+                <div id="r0" class="reel">?</div>
+                <div id="r1" class="reel">?</div>
+                <div id="r2" class="reel">?</div>
+            </div>
+            <div class="buttons-container">
+                <button id="stop0" class="stop-btn" disabled>STOP</button>
+                <button id="stop1" class="stop-btn" disabled>STOP</button>
+                <button id="stop2" class="stop-btn" disabled>STOP</button>
+            </div>
+        </div>
+        
+        <p id="msg" style="text-align: center; font-weight: bold; font-size: 1.5em; min-height: 1.5em;"></p>
     </div>
 
     <script type="module">
-        import { db, getUserInfo, DISCORD_WEBHOOK_URL } from './config.js';
+        // ▼▼▼ SLOT_WEBHOOK_URL をインポート ▼▼▼
+        import { db, getUserInfo, SLOT_WEBHOOK_URL } from './config.js';
         import { ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        // 1. ログイン情報の取得
         const user = getUserInfo();
         if (user) {
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
-            
-            // ポイントのリアルタイム監視
-            onValue(ref(db, `teams/${user.teamId}/points`), (s) => {
-                document.getElementById('points').innerText = s.val() || 0;
-            });
+            onValue(ref(db, `teams/${user.teamId}/points`), s => document.getElementById('points').innerText = s.val() || 0);
         }
 
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
-        let status = "ready"; 
         let intervals = [null, null, null];
-        let results = [0, 0, 0];
+        let results = [null, null, null];
+        let isPlaying = false;
 
-        const btn = document.getElementById('action-btn');
-        btn.onclick = () => {
-            if (status === "ready") startSlot();
-            else if (status === "spinning" || status.startsWith("stop")) stopNextReel();
-        };
+        const startBtn = document.getElementById('start-btn');
+        const stopBtns = [document.getElementById('stop0'), document.getElementById('stop1'), document.getElementById('stop2')];
 
-        function startSlot() {
+        // スタートボタン
+        startBtn.onclick = () => {
+            if (isPlaying) return;
             const bet = parseInt(document.getElementById('bet').value);
             if (isNaN(bet) || bet < 10) return alert("10P以上賭けてください");
 
-            const pRef = ref(db, `teams/${user.teamId}/points`);
-
-            runTransaction(pRef, (p) => {
-                if (p < bet) return; // ポイント不足
-                return p - bet; 
+            runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
+                if (p === null || p < bet) return; return p - bet;
             }).then(res => {
                 if(!res.committed) return alert("ポイントが足りません！");
                 
-                status = "spinning";
-                btn.innerText = "1番目を止める！";
-                document.getElementById('msg').innerText = "回転中...";
-                
+                isPlaying = true;
+                startBtn.disabled = true;
+                startBtn.innerText = "回転中...";
+                document.getElementById('msg').innerText = "";
+                results = [null, null, null];
+
+                // リール回転開始 & ボタン有効化
                 intervals.forEach((_, i) => {
+                    document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
                     intervals[i] = setInterval(() => {
-                        results[i] = Math.floor(Math.random() * symbols.length);
-                        document.getElementById(`r${i+1}`).innerText = symbols[results[i]];
-                    }, 100);
+                        document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                    }, 80); // 回転速度UP
+                    stopBtns[i].disabled = false;
+                    stopBtns[i].onclick = () => stopReel(i);
                 });
             });
-        }
+        };
 
-        function stopNextReel() {
-            if (intervals[0]) {
-                clearInterval(intervals[0]); intervals[0] = null;
-                btn.innerText = "2番目を止める！";
-            } else if (intervals[1]) {
-                clearInterval(intervals[1]); intervals[1] = null;
-                btn.innerText = "3番目を止める！";
-            } else if (intervals[2]) {
-                clearInterval(intervals[2]); intervals[2] = null;
-                checkResult();
+        // 個別ストップボタン
+        function stopReel(index) {
+            if (intervals[index]) {
+                clearInterval(intervals[index]);
+                intervals[index] = null;
+                // 止まった絵柄を記録
+                results[index] = symbols.indexOf(document.getElementById(`r${index}`).innerText);
+                stopBtns[index].disabled = true;
+
+                // 全て止まったかチェック
+                if (results.every(r => r !== null)) {
+                    checkResult();
+                }
             }
         }
 
+        // 結果判定
         function checkResult() {
             const bet = parseInt(document.getElementById('bet').value);
             let win = 0;
-            let resultLabel = "ハズレ";
+            let resultLabel = "ハズレ...";
 
-            // 判定ロジック
             if (results[0] === results[1] && results[1] === results[2]) {
-                win = results[0] === 4 ? bet * 10 : bet * 5; 
-                resultLabel = "🎊 大当たり";
-            } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
-                win = Math.floor(bet * 1.5);
-                resultLabel = "✨ 当たり";
-            }
+                win = results[0] === 4 ? bet * 10 : bet * 3; // 7揃いは10倍、他は3倍
+                resultLabel = "🎉 当たり";
+            }/* else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+                win = Math.floor(bet * 1.2);
+                resultLabel = "✨ 小当たり";
+            }*/
 
-            document.getElementById('msg').innerText = `${resultLabel}！ ${win}P 獲得！`;
+            document.getElementById('msg').innerText = win > 0 ? `${resultLabel} (+${win}P)` : resultLabel;
 
-            // 2. 結果に依らずDiscordへ通知を飛ばす
-            const discordMsg = `🎰 **スロットログ**\n━━━━━━━━━━━━\n**チーム**: ${user.teamName}\n**名前**: ${user.name} さん\n**結果**: ${resultLabel}\n**使用**: ${bet} P / **獲得**: ${win} P`;
-            
-            fetch(DISCORD_WEBHOOK_URL, {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({ content: discordMsg })
+            // スロット専用Webhookへ通知
+            fetch(SLOT_WEBHOOK_URL, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: `🎰 **スロット結果**: ${user.teamName} の ${user.name} さん\n結果: ${resultLabel} (BET:${bet} -> GET:${win})` })
             });
 
-            // 当たった場合はポイントをDBに戻す
             if (win > 0) {
                 runTransaction(ref(db, `teams/${user.teamId}/points`), p => (p || 0) + win);
             }
-
-            btn.innerText = "もう一度遊ぶ";
-            status = "ready";
+            isPlaying = false;
+            startBtn.disabled = false;
+            startBtn.innerText = "START SPIN!";
         }
     </script>
 </body>
