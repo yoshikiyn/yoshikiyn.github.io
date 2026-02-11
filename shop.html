@@ -84,7 +84,7 @@
         }
         
         // 購入処理をグローバルに公開
-        window.buyItem = (itemId, itemName, price) => {
+        window.buyItem = (itemName, price) => {
             const modal = document.getElementById('custom-confirm');
             const msgEl = document.getElementById('confirm-msg');
             
@@ -98,16 +98,25 @@
         
             // 「はい」をクリック
             document.getElementById('confirm-yes').onclick = () => {
-                modal.style.display = 'none';
-                
-                // Firebaseのポイント更新
-                runTransaction(ref(db, `teams/${user.teamId}/points`), (p) => {
-                    if (p < price) return;
-                    return p - price;
-                }).then((res) => {
-                    if (!res.committed) {
-                        showToast("ポイントが足りません！");
-                        return;
+                    const modal = document.getElementById('custom-confirm');
+                    modal.style.display = 'none';
+                    const itemPrice = parseInt(price);
+                    runTransaction(ref(db, `teams/${user.teamId}/points`), (currentPoints) => {
+                        const p = currentPoints || 0;
+                        if (p < itemPrice) {
+                            return;
+                        }
+                        return p - itemPrice;
+                    }).then((res) => {
+                        if (!res.committed) {
+                            showToast("ポイントが足りません！");
+                            return;
+                        }
+            
+                        // --- 購入成功後の処理 ---
+                        // Webhook送信など...
+                        showToast(`${itemName} を購入しました！`);
+            
                     }
         
                     // Webhook通知
