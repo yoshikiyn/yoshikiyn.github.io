@@ -12,21 +12,6 @@
         visibility: hidden;
         opacity: 0;
     }
-    #slot-lock-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: #1a1a1a;
-        display: flex; /* 最初は flex にしておく */
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-    }
-
-    /* 解除されたら表示するためのクラス */
-    .is-visible {
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
 </style>
 <body>
     <div id="slot-lock-overlay" class="modal-overlay">
@@ -107,40 +92,34 @@
         document.getElementById('display-name').innerText = user.name;
         
         // ポイントのリアルタイム同期
-        onValue(ref(db, `teams/${user.teamId}/points`), s => {
-            const p = document.getElementById('points');
-            if(p) p.innerText = (s.val() || 0).toLocaleString();
-        });
-
-        // 2. 解除状態のチェック（ここが重要）
         onValue(unlockRef, (s) => {
             const isUnlocked = s.val() === true;
-            
+
             if (isUnlocked) {
-                if(overlay) overlay.style.display = 'none';
-                if(container) container.classList.add('is-visible'); // ここで白画面を解除
+                // 【解除済みの場合】
+                if(overlay) overlay.style.display = 'none';      // ロック画面は出さない
+                if(container) container.classList.add('is-visible'); // スロット本体を出す
             } else {
-                if(overlay) overlay.style.display = 'flex';
-                // 未解除時はコンテナを隠したままにする（必要なら）
+                // 【未解除の場合】
+                if(overlay) overlay.style.display = 'flex';     // ここで初めてロック画面を出す
+                // container は hidden のままなのでスロットは見えない
             }
         });
 
-        // 3. ボタンのイベント紐付け
-        if(unlockBtn) {
-            unlockBtn.onclick = () => {
-                if (pwInput.value === SECRET_PW) {
-                    set(unlockRef, true).catch(err => alert("通信エラー"));
-                } else {
-                    document.getElementById('lock-error').innerText = "パスワードが違います";
-                    pwInput.value = "";
-                }
-            };
-        }
+        // 解除ボタンの処理
+        document.getElementById('unlock-btn').onclick = () => {
+            const val = document.getElementById('slot-pw-input').value;
+            if (val === SECRET_PW) {
+                set(unlockRef, true);
+            } else {
+                document.getElementById('lock-error').innerText = "パスワードが違います";
+            }
+        };
 
-        if(backBtn) {
-            backBtn.onclick = () => { window.location.href = 'shop.html'; };
-        }
-    }
+        // ショップへ戻るボタン
+        document.getElementById('lock-back-btn').onclick = () => {
+            window.location.href = 'shop.html';
+        };
 
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
         let intervals = [null, null, null];
