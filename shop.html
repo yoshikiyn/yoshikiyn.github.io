@@ -74,8 +74,8 @@
                 </div>
             `;
         });
-
-        // カスタム通知を表示する関数
+    
+            // 通知を表示する関数
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.innerText = msg;
@@ -83,37 +83,50 @@
             setTimeout(() => t.classList.remove('show'), 3000);
         }
         
-        // 購入処理
+        // 購入処理をグローバルに公開
         window.buyItem = (itemId, itemName, price) => {
             const modal = document.getElementById('custom-confirm');
-            document.getElementById('confirm-msg').innerText = `${itemName} を購入しますか？`;
-            modal.style.display = 'flex';
+            const msgEl = document.getElementById('confirm-msg');
+            
+            if (!modal || !msgEl) {
+                console.error("モーダル用のHTMLが見つかりません。");
+                return;
+            }
         
-            // 「はい」を押した時
+            msgEl.innerText = `${itemName} を購入しますか？`;
+            modal.style.display = 'flex'; // 表示
+        
+            // 「はい」をクリック
             document.getElementById('confirm-yes').onclick = () => {
                 modal.style.display = 'none';
                 
-                runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
+                // Firebaseのポイント更新
+                runTransaction(ref(db, `teams/${user.teamId}/points`), (p) => {
                     if (p < price) return;
                     return p - price;
-                }).then(res => {
+                }).then((res) => {
                     if (!res.committed) {
                         showToast("ポイントが足りません！");
                         return;
                     }
         
-                    // Webhook送信
+                    // Webhook通知
                     fetch(SHOP_WEBHOOK_URL, {
                         method: "POST",
                         headers: {"Content-Type":"application/json"},
-                        body: JSON.stringify({ content: `🛒 **SHOP**: ${user.teamName}の${user.name}さんが「${itemName}」を購入しました。` })
+                        body: JSON.stringify({ 
+                            content: `🛒 **SHOP**: ${user.teamName}の${user.name}さんが「${itemName}」を購入しました！` 
+                        })
                     });
         
                     showToast(`${itemName} を購入しました！`);
+                }).catch(err => {
+                    console.error(err);
+                    showToast("エラーが発生しました");
                 });
             };
         
-            // 「いいえ」を押した時
+            // 「いいえ」をクリック
             document.getElementById('confirm-no').onclick = () => {
                 modal.style.display = 'none';
             };
