@@ -20,16 +20,6 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
 .item-card img { width: 80px; height: 80px; object-fit: contain; }
 .item-card button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-/* 1. コンテナの余白を調整（スマホで横幅いっぱいにするため） */
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    background: white;
-    padding: 20px 0; /* 左右のパディングを0にする */
-    border-radius: 12px;
-}
-
-/* 2. スロット筐体全体のラッパー */
 .slot-machine-wrapper {
     position: relative;
     width: 100%;           /* コンテナの幅いっぱいに広げる */
@@ -43,7 +33,6 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     padding-top: 148.993%; /* お手元の画像の比率に合わせて 120% 〜 160% くらいで調整 */
 }
 
-/* 3. リール表示エリア（背景の「窓」に合わせる） */
 .reels-container {
     position: absolute;
     /* 背景画像の「窓」の場所に重なるまで、
@@ -72,7 +61,6 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
 }
 
-/* 4. ストップボタンの配置（背景のボタンに合わせる） */
 .buttons-container {
     position: absolute;
     bottom: 25%; /* 背景画像のボタンがある位置まで上げる/下げる */
