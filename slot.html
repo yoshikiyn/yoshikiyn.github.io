@@ -180,6 +180,7 @@ function checkResult() {
                 };
             });
         }
+        document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
     </script>
 </body>
 </html>
