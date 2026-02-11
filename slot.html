@@ -110,31 +110,39 @@ startBtn.onclick = () => {
 
 function stopReel(i) {
     if (!intervals[i]) return;
-    
-    // 現在のリールを止める
     clearInterval(intervals[i]); 
     intervals[i] = null;
-    stopBtns[i].disabled = true; // 自分を無効化
+    stopBtns[i].disabled = true;
 
-    if (i < 2) {
-        // --- 1番目または2番目が止まった場合 ---
-        // 次のボタンを有効にする
-        stopBtns[i + 1].disabled = false;
-    } else {
-        // --- 3番目が止まった場合のみ、当たり判定へ ---
-        const winRate = getWinRate();
-        
-        // 確率補正（イカサマ）
-        if (Math.random() * 100 < winRate) {
-            const force = document.getElementById('r0').innerText;
-            document.getElementById('r2').innerText = force;
+    if (i === 2) {
+        const winRate = getWinRate(); // 0 ～ 100
+        const dice = Math.random() * 100;
+
+        const r0 = document.getElementById('r0').innerText;
+        const r1 = document.getElementById('r1').innerText;
+        let r2 = document.getElementById('r2').innerText;
+
+        if (dice < winRate) {
+            // 【強制当選】1枚目と揃える
+            r2 = r0; 
+            document.getElementById('r2').innerText = r2;
+        } else {
+            // 【強制落選】もし1枚目か2枚目と被っていたら、強制的に変える
+            // 確率設定が低い（0%など）場合はこちらが動く
+            while (r2 === r0 || r2 === r1) {
+                // 被らなくなるまでランダムに選び直す
+                r2 = symbols[Math.floor(Math.random() * symbols.length)];
+            }
+            document.getElementById('r2').innerText = r2;
         }
         
-        // 全リールの最終結果を確定させる
+        // 最終的な見た目を結果として確定
         results = [0, 1, 2].map(idx => symbols.indexOf(document.getElementById(`r${idx}`).innerText));
         checkResult();
-        }
-    }   
+    } else {
+        stopBtns[i + 1].disabled = false;
+    }
+}
 
         function checkResult() {
             const bet = parseInt(document.getElementById('bet').value);
