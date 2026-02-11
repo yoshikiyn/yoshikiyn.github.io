@@ -156,4 +156,15 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
 
 /* ボタンの見た目調整 */
 .btn-primary { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; }
-.btn-secondary { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; }
+.btn-secondary {
+    background-color: #6c757d; /* 落ち着いたグレー */
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px; /* 角を少し丸く */
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 軽い影で立体感を出す */
+}
