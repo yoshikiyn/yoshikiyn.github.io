@@ -170,11 +170,12 @@ function checkResult() {
             const statsRef = ref(db, `user_stats/${user.id}`);
             runTransaction(statsRef, (current) => {
                 if (current === null) {
-                    return { total_bet: bet, total_win: win };
+                    return { total_bet: bet, total_win: win, counter:1 };
                 }
                 return {
                     total_bet: (current.total_bet || 0) + bet,
-                    total_win: (current.total_win || 0) + win
+                    total_win: (current.total_win || 0) + win,
+                    counter: (current.counter || 0) + 1
                 };
             });
         }
