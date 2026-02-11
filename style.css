@@ -180,12 +180,6 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     z-index: 99999;
 }
 
-/* スロット本体：これも最初は完全に隠す */
-.slot-machine-wrapper, #start-btn, .point-box, #user-badge, nav {
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s ease; /* パッと出すための演出 */
-}
 
 /* 解除後にクラスをつけて一斉に表示するための設定 */
 .is-visible {
