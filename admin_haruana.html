@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理者パネル - サークル企画</title>
+    <title>管理者パネル</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
@@ -18,7 +18,7 @@
 <body>
     <script>
         // --- 簡易パスワード保護 ---
-        const ADMIN_PASSWORD = "admin"; // 自由に変更してください
+        const ADMIN_PASSWORD = "admin";
         const input = prompt("管理用パスワードを入力してください");
     
         if (input !== ADMIN_PASSWORD) {
