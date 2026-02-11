@@ -172,9 +172,19 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
 #slot-lock-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: #1a1a1a; /* 真っ暗にして中身を隠す */
-    display: none; /* JSで制御 */
+    background: #1a1a1a; /* 真っ暗な背景 */
+    display: flex;       /* 最初から表示！ */
     align-items: center;
     justify-content: center;
     z-index: 99999;
+}
+
+/* スロット本体を最初は隠しておく（チラ見え防止） */
+.slot-machine-wrapper, #start-btn, .point-box {
+    visibility: hidden; 
+}
+
+/* 解除された時だけ見えるようにするクラス */
+.unlocked-view {
+    visibility: visible !important;
 }
