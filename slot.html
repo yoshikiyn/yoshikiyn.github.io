@@ -83,42 +83,62 @@
         import { db, getUserInfo, SLOT_WEBHOOK_URL } from './config.js';
         import { ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        const user = getUserInfo();
-        const SECRET_PW = "password";
+ const user = getUserInfo();
+    if (!user) {
+        window.location.href = 'login.html';
+        // ここで処理を中断して真っ白を防ぐ
+    } else {
+        // --- ログインしている場合のみ実行 ---
+        initSlotPage();
+    }
+
+    async function initSlotPage() {
+        const SECRET_PW = "password"; // ここを実際のパスワードに
+        const unlockRef = ref(db, `user_stats/${user.id}/slot_unlocked`);
         
-        if (user) {
-            document.getElementById('display-team').innerText = user.teamName;
-            document.getElementById('display-name').innerText = user.name;
-            onValue(ref(db, `teams/${user.teamId}/points`), s => document.getElementById('points').innerText = s.val() || 0);
+        const overlay = document.getElementById('slot-lock-overlay');
+        const container = document.querySelector('.container');
+        const unlockBtn = document.getElementById('unlock-btn');
+        const backBtn = document.getElementById('lock-back-btn');
+        const pwInput = document.getElementById('slot-pw-input');
+
+        // チーム名と名前の表示
+        document.getElementById('display-team').innerText = user.teamName;
+        document.getElementById('display-name').innerText = user.name;
         
-            const unlockRef = ref(db, `user_stats/${user.id}/slot_unlocked`);
-            const overlay = document.getElementById('slot-lock-overlay');
-            const unlockBtn = document.getElementById('unlock-btn');
-            const backBtn = document.getElementById('lock-back-btn');
-            const pwInput = document.getElementById('slot-pw-input');
-            const lockError = document.getElementById('lock-error');
-        
-            onValue(unlockRef, (s) => {
-                const isUnlocked = s.val() === true;
-                const overlay = document.getElementById('slot-lock-overlay');
-                
-                // スロットに関連する要素をまとめて取得
-                const mainElements = document.querySelectorAll('.slot-machine-wrapper, #start-btn, .point-box, #user-badge, nav');
+        // ポイントのリアルタイム同期
+        onValue(ref(db, `teams/${user.teamId}/points`), s => {
+            const p = document.getElementById('points');
+            if(p) p.innerText = (s.val() || 0).toLocaleString();
+        });
+
+        // 2. 解除状態のチェック（ここが重要）
+        onValue(unlockRef, (s) => {
+            const isUnlocked = s.val() === true;
             
-                if (isUnlocked) {
-                    // すでに解除済みの場合
-                    overlay.style.display = 'none'; // ロック画面は出さない
-                    
-                    // スロット本体を「見える化」する
-                    mainElements.forEach(el => el.classList.add('is-visible'));
+            if (isUnlocked) {
+                if(overlay) overlay.style.display = 'none';
+                if(container) container.classList.add('is-visible'); // ここで白画面を解除
+            } else {
+                if(overlay) overlay.style.display = 'flex';
+                // 未解除時はコンテナを隠したままにする（必要なら）
+            }
+        });
+
+        // 3. ボタンのイベント紐付け
+        if(unlockBtn) {
+            unlockBtn.onclick = () => {
+                if (pwInput.value === SECRET_PW) {
+                    set(unlockRef, true).catch(err => alert("通信エラー"));
                 } else {
-                    // まだ未解除の場合
-                    overlay.style.display = 'flex'; // ここで初めてロック画面を出す
-                    
-                    // スロット本体は隠したまま
-                    mainElements.forEach(el => el.classList.remove('is-visible'));
+                    document.getElementById('lock-error').innerText = "パスワードが違います";
+                    pwInput.value = "";
                 }
-            });
+            };
+        }
+
+        if(backBtn) {
+            backBtn.onclick = () => { window.location.href = 'shop.html'; };
         }
 
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
