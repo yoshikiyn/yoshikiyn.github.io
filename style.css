@@ -171,14 +171,14 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
 
 /* ロック画面：最初は消しておく */
 #slot-lock-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: #1a1a1a; 
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 99999;
-}
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: #1a1a1a;
+        display: none; /* ★ここが none なので、最初は UNLOCK も出ない */
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    }
 
 
 /* 解除後にクラスをつけて一斉に表示するための設定 */
