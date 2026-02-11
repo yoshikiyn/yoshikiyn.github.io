@@ -133,12 +133,16 @@
         let currentSettings = {};
 
         onValue(ref(db, 'settings'), s => { currentSettings = s.val() || {}; });
-
+        
         function getWinRate() {
             if (currentSettings.mode === "manual") return currentSettings.manual_rate;
             const now = new Date();
-            const ratio = (now.getHours() * 60 + now.getMinutes()) / 1439;
-            return (currentSettings.auto_min || 0) + ((currentSettings.auto_max || 0) - (currentSettings.auto_min || 0)) * ratio;
+            const totalMinutes = now.getHours() * 60 + now.getMinutes();
+            const distanceFromNoon = Math.abs(totalMinutes - 720);
+            const ratio = distanceFromNoon / 720;
+            const min = currentSettings.auto_min || 0;
+            const max = currentSettings.auto_max || 0;
+            return min + (max - min) * ratio;
         }
 
         const startBtn = document.getElementById('start-btn');
