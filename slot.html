@@ -162,6 +162,19 @@ function stopReel(i) {
                 body: JSON.stringify({ content: `🎰 **SLOT**: ${user.teamName}の${user.name}さんの結果: ${label} (賭け:${bet} / 獲得:${win})` })
             });
 
+            function updatePersonalStats(bet, win) {
+                const statsRef = ref(db, `user_stats/${user.id}`);
+                runTransaction(statsRef, (current) => {
+                    if (current === null) {
+                        return { total_bet: bet, total_win: win };
+                    }
+                    return {
+                        total_bet: (current.total_bet || 0) + bet,
+                        total_win: (current.total_win || 0) + win
+                    };
+                });
+            }
+
             if (win > 0) runTransaction(ref(db, `teams/${user.teamId}/points`), p => (p || 0) + win);
             isPlaying = false; startBtn.disabled = false;
         }
