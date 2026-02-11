@@ -2,43 +2,43 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>管理者画面</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者パネル - サークル企画</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+        .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
         .admin-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
         .admin-row strong { font-size: 1.2em; color: #28a745; }
-        input[type="number"], select { padding: 5px; font-size: 1em; }
-        .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; margin-top: 10px; }
+        input[type="number"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-save:active { background: #0056b3; }
+        .current-status { font-size: 0.9em; color: #666; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <script>
-        // 設定したいパスワード
-        const ADMIN_PASSWORD = "admin"; 
-    
-        // ページ読み込み時にパスワード入力を求める
+        // --- 簡易パスワード保護 ---
+        const ADMIN_PASSWORD = "admin"; // 自由に変更してください
         const input = prompt("管理用パスワードを入力してください");
     
         if (input !== ADMIN_PASSWORD) {
             alert("パスワードが違います。アクセス権限がありません。");
-            // パスワードが違う場合はトップページに飛ばす
             window.location.href = "login.html";
-            
-            // 念のため、bodyを空にする（読み込みを一瞬止めるため）
             document.documentElement.style.display = "none";
         }
     </script>
+
     <div class="container">
         <h1>管理者用パネル</h1>
 
         <div class="admin-section">
             <h2>チームポイント管理</h2>
-            <div id="admin-list">Loading...</div>
+            <div id="admin-list">チームデータを読み込み中...</div>
         </div>
 
         <div class="admin-section">
             <h2>スロット確率設定</h2>
+            <div id="calc-rate-display" class="current-status">現在の計算レート: -- %</div>
             
             <div class="admin-row">
                 <span>動作モード</span>
@@ -72,9 +72,9 @@
 
     <script type="module">
         import { db, TEAMS } from './config.js';
-        import { ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        // --- ポイント管理ロジック ---
+        // --- チームポイントのリアルタイム表示 ---
         const listDiv = document.getElementById('admin-list');
         onValue(ref(db, 'teams'), (snapshot) => {
             const data = snapshot.val() || {};
@@ -87,21 +87,22 @@
                     <span>${TEAMS[teamId].name}</span>
                     <div>
                         <strong>${points} P</strong>
-                        <button onclick="window.updatePoints('${teamId}', ${points})">変更</button>
+                        <button id="btn-${teamId}">変更</button>
                     </div>
                 `;
                 listDiv.appendChild(row);
+                
+                // 動的に追加したボタンにイベント登録
+                document.getElementById(`btn-${teamId}`).onclick = () => {
+                    const newVal = prompt(`${TEAMS[teamId].name} のポイントを入力`, points);
+                    if (newVal !== null && !isNaN(parseInt(newVal))) {
+                        set(ref(db, `teams/${teamId}/points`), parseInt(newVal));
+                    }
+                };
             });
         });
 
-        window.updatePoints = (teamId, currentVal) => {
-            const newVal = prompt(`${TEAMS[teamId].name} のポイントを入力`, currentVal);
-            if (newVal !== null && !isNaN(parseInt(newVal))) {
-                set(ref(db, `teams/${teamId}/points`), parseInt(newVal));
-            }
-        };
-
-        // --- 確率設定ロジック ---
+        // --- 確率設定の読み込み（入力の邪魔をしないよう一回だけ取得） ---
         const fields = {
             mode: document.getElementById('mode-select'),
             manual: document.getElementById('manual-rate'),
@@ -109,21 +110,45 @@
             max: document.getElementById('auto-max')
         };
 
-        onValue(ref(db, 'settings'), (snapshot) => {
-            const data = snapshot.val() || {};
-            fields.mode.value = data.mode || "auto";
-            fields.manual.value = data.manual_rate || 10;
-            fields.min.value = data.auto_min || 5;
-            fields.max.value = data.auto_max || 30;
+        get(ref(db, 'settings')).then((snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                fields.mode.value = data.mode || "auto";
+                fields.manual.value = data.manual_rate || 0;
+                fields.min.value = data.auto_min || 0;
+                fields.max.value = data.auto_max || 0;
+                updateCalcDisplay(data);
+            }
         });
 
+        // 現在の計算上の確率を画面に表示するおまけ機能
+        function updateCalcDisplay(data) {
+            const display = document.getElementById('calc-rate-display');
+            if (data.mode === 'manual') {
+                display.innerText = `現在の設定: 手動 (${data.manual_rate}%)`;
+            } else {
+                const now = new Date();
+                const ratio = (now.getHours() * 60 + now.getMinutes()) / 1439;
+                const rate = data.auto_min + (data.auto_max - data.auto_min) * ratio;
+                display.innerText = `現在の計算レート: 約 ${rate.toFixed(1)}% (自動)`;
+            }
+        }
+
+        // --- 設定の保存処理 ---
         document.getElementById('save-settings').onclick = () => {
-            update(ref(db, 'settings'), {
+            const newData = {
                 mode: fields.mode.value,
-                manual_rate: parseInt(fields.manual.value),
-                auto_min: parseInt(fields.min.value),
-                auto_max: parseInt(fields.max.value)
-            }).then(() => alert("確率設定を更新しました！"));
+                manual_rate: parseInt(fields.manual.value) || 0,
+                auto_min: parseInt(fields.min.value) || 0,
+                auto_max: parseInt(fields.max.value) || 0
+            };
+
+            update(ref(db, 'settings'), newData).then(() => {
+                alert("確率設定を保存しました！");
+                updateCalcDisplay(newData);
+            }).catch(err => {
+                alert("保存に失敗しました: " + err.message);
+            });
         };
     </script>
 </body>
