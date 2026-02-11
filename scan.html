@@ -51,47 +51,63 @@
             const urlParams = new URLSearchParams(window.location.search);
             const qrCode = urlParams.get('code');
             const user = getUserInfo();
-
+        
             if (!qrCode) {
-                updateStatus("エラー", "無効なQRコードです。", true);
+                updateStatus("エラー", "QRコードが指定されていません。", true);
                 return;
             }
-
+        
             const qrRef = ref(db, `qr_codes/${qrCode}`);
-            const spinner = document.getElementById('loading-spinner');
-
+        
             try {
+                // 1. まず、そのQRコードがDBに存在するか＆使用済みかを確認
+                const snapshot = await get(qrRef);
+                
+                if (!snapshot.exists()) {
+                    updateStatus("エラー", "このQRコードは登録されていません。", true);
+                    return;
+                }
+        
+                const data = snapshot.val();
+                if (data.isUsed) {
+                    updateStatus("残念...", "このQRコードはすでに誰かに使われています！", true);
+                    return;
+                }
+        
+                // 2. 問題なければ「早い者勝ち」の確定処理を実行
                 const result = await runTransaction(qrRef, (currentData) => {
-                    if (currentData === null) return;
-                    if (currentData.isUsed) return;
-                    
+                    // ここでの null チェックは、同時実行時の衝突回避用
+                    if (currentData === null) return currentData; 
+                    if (currentData.isUsed) return; // 誰かが一瞬早く使った場合
+        
                     return {
                         ...currentData,
                         isUsed: true,
                         usedBy: userId
                     };
                 });
-
+        
+                // トランザクションが成功しなかった（一瞬の差で負けた）場合
                 if (!result.committed) {
-                    updateStatus("残念...", "このQRコードはすでに誰かに使われています！", true);
+                    updateStatus("残念...", "一瞬の差で他の人に使われてしまいました！", true);
                     return;
                 }
-
-                // 2. ポイント付与
-                const earnedPoints = result.snapshot.val().points || 0;
+        
+                // 3. ポイント付与処理
+                const earnedPoints = data.points || 0;
                 await runTransaction(ref(db, `teams/${user.teamId}/points`), (p) => {
                     return (p || 0) + earnedPoints;
                 });
-
+        
                 updateStatus("獲得成功！", `${earnedPoints} P 手に入れました！`, false);
                 showToast(`${earnedPoints} P ゲット！`, "success");
                 
                 // 3秒後に自動でショップへ
                 setTimeout(() => window.location.href = 'shop.html', 3000);
-
+        
             } catch (error) {
                 console.error(error);
-                updateStatus("エラー", "処理中に問題が発生しました。", true);
+                updateStatus("エラー", "通信に失敗しました。電波の良い場所で試してください。", true);
             }
         }
 
