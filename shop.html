@@ -75,22 +75,48 @@
             `;
         });
 
-        window.purchase = (itemName, cost) => {
-            if (!confirm(`${itemName}を${cost}Pで購入しますか？`)) return;
-            const pRef = ref(db, `teams/${user.teamId}/points`);
-            runTransaction(pRef, (p) => {
-                if (p === null || p < cost) return; 
-                return p - cost;
-            }).then((result) => {
-                if (!result.committed) { alert("ポイントが足りません！"); } else {
-                    // ショップ専用Webhookへ送信
+        // カスタム通知を表示する関数
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+        
+        // 購入処理
+        window.buyItem = (itemId, itemName, price) => {
+            const modal = document.getElementById('custom-confirm');
+            document.getElementById('confirm-msg').innerText = `${itemName} を購入しますか？`;
+            modal.style.display = 'flex';
+        
+            // 「はい」を押した時
+            document.getElementById('confirm-yes').onclick = () => {
+                modal.style.display = 'none';
+                
+                runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
+                    if (p < price) return;
+                    return p - price;
+                }).then(res => {
+                    if (!res.committed) {
+                        showToast("ポイントが足りません！");
+                        return;
+                    }
+        
+                    // Webhook送信
                     fetch(SHOP_WEBHOOK_URL, {
-                        method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ content: `🛒 **注文**: ${user.teamName} の ${user.name} さんが「${itemName}」を購入 (-${cost}P)` })
+                        method: "POST",
+                        headers: {"Content-Type":"application/json"},
+                        body: JSON.stringify({ content: `🛒 **SHOP**: ${user.teamName}の${user.name}さんが「${itemName}」を購入しました。` })
                     });
-                    alert("購入しました！");
-                }
-            });
+        
+                    showToast(`${itemName} を購入しました！`);
+                });
+            };
+        
+            // 「いいえ」を押した時
+            document.getElementById('confirm-no').onclick = () => {
+                modal.style.display = 'none';
+            };
         };
         document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
     </script>
