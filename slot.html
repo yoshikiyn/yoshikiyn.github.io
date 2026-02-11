@@ -120,6 +120,14 @@
         document.getElementById('lock-back-btn').onclick = () => {
             window.location.href = 'shop.html';
         };
+
+                
+        const pointsRef = ref(db, `teams/${user.teamId}/points`);
+        onValue(pointsRef, (snapshot) => {
+            const currentPoints = snapshot.val() || 0;
+            document.getElementById('points').innerText = currentPoints.toLocaleString();
+        });
+        
     }
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
         let intervals = [null, null, null];
