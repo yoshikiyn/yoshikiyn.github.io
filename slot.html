@@ -69,27 +69,26 @@
             const pwInput = document.getElementById('slot-pw-input');
             const lockError = document.getElementById('lock-error');
         
-            // 状態をチェック
             onValue(unlockRef, (s) => {
-                if (s.val() === true) {
-                    overlay.style.display = 'none';
-                } else {
-                    overlay.style.display = 'flex';
-                }
-            });
-        
-            // 解除ボタン
-            unlockBtn.onclick = () => {
-                if (pwInput.value === SECRET_PW) {
-                    // 正解ならFirebaseにフラグを立てる
-                    set(unlockRef, true).then(() => {
-                        showToast("スロット解放！", "success");
+                const isUnlocked = s.val() === true;
+                const overlay = document.getElementById('slot-lock-overlay');
+                const wrapper = document.querySelector('.slot-machine-wrapper');
+                const startBtn = document.getElementById('start-btn');
+                const pointBox = document.querySelector('.point-box');
+            
+                if (isUnlocked) {
+                    // 解除済みなら
+                    overlay.style.display = 'none'; // ロックを消す
+                    
+                    // 本体を表示する（一気に見せる）
+                    [wrapper, startBtn, pointBox].forEach(el => {
+                        if(el) el.classList.add('unlocked-view');
                     });
                 } else {
-                    lockError.innerText = "パスワードが正しくありません。";
-                    pwInput.value = "";
+                    // 未解除なら
+                    overlay.style.display = 'flex'; // ロックを出し続ける
                 }
-            };
+            });
         }
 
         const symbols = ["🍒", "🔔", "🍉", "⭐", "7️⃣"];
