@@ -168,3 +168,13 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     transition: background 0.2s, transform 0.1s;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 軽い影で立体感を出す */
 }
+
+#slot-lock-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #1a1a1a; /* 真っ暗にして中身を隠す */
+    display: none; /* JSで制御 */
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
