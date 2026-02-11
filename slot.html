@@ -69,46 +69,72 @@
             return currentSettings.auto_min + (currentSettings.auto_max - currentSettings.auto_min) * ratio;
         }
 
-        const startBtn = document.getElementById('start-btn');
-        const stopBtns = [document.getElementById('stop0'), document.getElementById('stop1'), document.getElementById('stop2')];
+const startBtn = document.getElementById('start-btn');
+const stopBtns = [
+    document.getElementById('stop0'), 
+    document.getElementById('stop1'), 
+    document.getElementById('stop2')
+];
 
-        startBtn.onclick = () => {
-            if (isPlaying) return;
-            const bet = parseInt(document.getElementById('bet').value);
-            if (isNaN(bet) || bet < 10) return alert("10P以上で！");
+startBtn.onclick = () => {
+    if (isPlaying) return;
+    const bet = parseInt(document.getElementById('bet').value);
+    if (isNaN(bet) || bet < 10) return alert("10P以上で！");
 
-            runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
-                if (p < bet) return; return p - bet;
-            }).then(res => {
-                if(!res.committed) return alert("ポイント不足");
-                isPlaying = true; startBtn.disabled = true;
-                document.getElementById('msg').innerText = "回転中...";
-                intervals.forEach((_, i) => {
-                    intervals[i] = setInterval(() => {
-                        document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
-                    }, 80);
-                    stopBtns[i].disabled = false;
-                    stopBtns[i].onclick = () => stopReel(i);
-                });
-            });
-        };
-
-        function stopReel(i) {
-            if (!intervals[i]) return;
-            clearInterval(intervals[i]); intervals[i] = null;
+    runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
+        if (p < bet) return; 
+        return p - bet;
+    }).then(res => {
+        if(!res.committed) return alert("ポイント不足");
+        
+        isPlaying = true; 
+        startBtn.disabled = true;
+        document.getElementById('msg').innerText = "回転中...";
+        
+        // 全リールを回転させる
+        intervals.forEach((_, i) => {
+            results[i] = null; // 結果をリセット
+            intervals[i] = setInterval(() => {
+                document.getElementById(`r${i}`).innerText = symbols[Math.floor(Math.random() * symbols.length)];
+            }, 80);
+            
+            // 重要：最初はすべてのストップボタンを無効化
             stopBtns[i].disabled = true;
+            stopBtns[i].onclick = () => stopReel(i);
+        });
 
-            // 3枚目が止まった時に確率補正
-            if (i === 2) {
-                const winRate = getWinRate();
-                if (Math.random() * 100 < winRate) {
-                    const force = document.getElementById('r0').innerText;
-                    document.getElementById('r2').innerText = force;
-                }
-                results = [0,1,2].map(idx => symbols.indexOf(document.getElementById(`r${idx}`).innerText));
-                checkResult();
-            }
+        // 1番目のボタンだけを有効にする
+        stopBtns[0].disabled = false;
+    });
+};
+
+function stopReel(i) {
+    if (!intervals[i]) return;
+    
+    // 現在のリールを止める
+    clearInterval(intervals[i]); 
+    intervals[i] = null;
+    stopBtns[i].disabled = true; // 自分を無効化
+
+    if (i < 2) {
+        // --- 1番目または2番目が止まった場合 ---
+        // 次のボタンを有効にする
+        stopBtns[i + 1].disabled = false;
+    } else {
+        // --- 3番目が止まった場合のみ、当たり判定へ ---
+        const winRate = getWinRate();
+        
+        // 確率補正（イカサマ）
+        if (Math.random() * 100 < winRate) {
+            const force = document.getElementById('r0').innerText;
+            document.getElementById('r2').innerText = force;
         }
+        
+        // 全リールの最終結果を確定させる
+        results = [0, 1, 2].map(idx => symbols.indexOf(document.getElementById(`r${idx}`).innerText));
+        checkResult();
+        }
+    }   
 
         function checkResult() {
             const bet = parseInt(document.getElementById('bet').value);
