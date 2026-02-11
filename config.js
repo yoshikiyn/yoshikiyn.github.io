@@ -16,8 +16,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
-export const DISCORD_WEBHOOK_URL = "WEBHOOK_REPLACE_ME";
 
+export const SHOP_WEBHOOK_URL = "SHOP_WEBHOOK_REPLACE_ME";
+export const SLOT_WEBHOOK_URL = "SLOT_WEBHOOK_REPLACE_ME";
 // チーム設定（表示名用）
 export const TEAMS = {
     "team_a": { name: "アダチーム" },
