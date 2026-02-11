@@ -1,29 +1,48 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8"><title>ログイン</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>チームログイン</h1>
-        <input type="text" id="login-id" placeholder="チームID">
-        <input type="password" id="login-pass" placeholder="パスワード">
-        <button id="login-btn">ログイン</button>
+        <h1>班員ログイン</h1>
+        <p>IDとパスワードを入力してください。</p>
+        
+        <div style="margin-top: 20px;">
+            <input type="text" id="login-id" placeholder="ID (例: d01)" style="width: 100%; margin-bottom: 10px; padding: 10px;">
+            <input type="password" id="login-pass" placeholder="パスワード" style="width: 100%; margin-bottom: 20px; padding: 10px;">
+            <button id="login-btn" style="width: 100%; font-size: 1.1em;">ログイン</button>
+        </div>
+        
+        <p id="error-msg" class="error" style="text-align: center; margin-top: 15px;"></p>
     </div>
 
     <script type="module">
-        import { TEAMS } from './config.js';
+        import { USERS } from './config.js';
+
         document.getElementById('login-btn').onclick = () => {
             const id = document.getElementById('login-id').value;
             const pass = document.getElementById('login-pass').value;
-            if (TEAMS[id] && TEAMS[id].pass === pass) {
-                localStorage.setItem('teamId', id);
+            const errorEl = document.getElementById('error-msg');
+
+            // USERSリストにIDが存在し、パスワードが一致するか確認
+            if (USERS[id] && USERS[id].pass === pass) {
+                // セッション代わりにlocalStorageに個人IDを保存
+                localStorage.setItem('userId', id);
+                // ショップ画面へ遷移
                 window.location.href = 'shop.html';
             } else {
-                alert("IDまたはパスワードが違います");
+                errorEl.innerText = "IDまたはパスワードが正しくありません。";
             }
         };
+
+        // すでにログインしている場合は自動遷移
+        if (localStorage.getItem('userId')) {
+            window.location.href = 'shop.html';
+        }
     </script>
 </body>
 </html>
