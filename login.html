@@ -118,7 +118,11 @@
 
             if (USERS[id] && USERS[id].pass === pass) {
                 localStorage.setItem('userId', id);
-                window.location.href = 'shop.html';
+                // URLパラメータから redirect 先を取得
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const redirectUrl = urlParams.get('redirect');
+                    // redirectがあればそこへ、なければ shop.html へ
+                    window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : 'shop.html';
             } else {
                 errorEl.innerText = "IDまたはパスワードが正しくありません。";
             }
