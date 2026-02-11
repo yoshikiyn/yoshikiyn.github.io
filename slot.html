@@ -250,6 +250,7 @@ function checkResult() {
                     return { total_bet: bet, total_win: win, counter:1 };
                 }
                 return {
+                    ...current,
                     total_bet: (current.total_bet || 0) + bet,
                     total_win: (current.total_win || 0) + win,
                     counter: (current.counter || 0) + 1
