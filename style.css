@@ -40,7 +40,7 @@ nav img { width: 32px; height: 32px; display: block; margin: 0 auto 5px; }
     background-size: contain;    /* 画像全体が収まるようにリサイズ */
     background-repeat: no-repeat;
     background-position: center top;
-    padding-top: 148%; /* お手元の画像の比率に合わせて 120% 〜 160% くらいで調整 */
+    padding-top: 148.993%; /* お手元の画像の比率に合わせて 120% 〜 160% くらいで調整 */
 }
 
 /* 3. リール表示エリア（背景の「窓」に合わせる） */
