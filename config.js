@@ -23,7 +23,8 @@ export const SLOT_WEBHOOK_URL = "SLOT_WEBHOOK_REPLACE_ME";
 export const TEAMS = {
     "team_a": { name: "アダチーム" },
     "team_b": { name: "樋口チーム" },
-    "team_c": { name: "坂後チーム" }
+    "team_c": { name: "坂後チーム" },
+    "team_t": { name: "デバッグ用"}
 };
 
 export const USERS = {
@@ -40,7 +41,8 @@ export const USERS = {
     "c01": { pass: "sakaziri", name:"坂後", team: "team_c" },
     "c02": { pass: "miyaji", name:"宮地", team: "team_c" },
     "c03": { pass: "sakai", name:"坂井", team: "team_c" },
-    "c04": { pass: "kimura", name:"木村", team: "team_c" }
+    "c04": { pass: "kimura", name:"木村", team: "team_c" },
+    "t01": { pass: "test", name:"デバッグ", team: "team_t"}
 };
 
 // ログイン情報の取得（個人名とチームIDを返す）
