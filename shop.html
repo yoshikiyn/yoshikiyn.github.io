@@ -55,7 +55,7 @@
             });
         }
 
-        // アイテム定義
+    /*
         const ITEMS = [
             { id: 1, name: "カップラーメン", cost: 350, img: "cupnoodle.png" },
             { id: 2, name: "ポテチ", cost: 300, img: "potato.png" },
@@ -64,17 +64,30 @@
             { id: 5, name: "スイッチ", cost: 1000, img: "switch.png"},
             { id: 6, name: "???(MEN ONLY)", cost: 2500, img: "quest.png"}
         ];
+    */
 
         const listContainer = document.getElementById('item-list');
-        ITEMS.forEach(item => {
-            listContainer.innerHTML += `
-                <div class="item-card">
-                    <img src="${item.img}" alt="${item.name}">
-                    <h4>${item.name}</h4>
-                    <p>${item.cost} P</p>
-                    <button onclick="buyItem('${item.name}', ${item.cost})">注文する</button>
-                </div>
-            `;
+        const itemsRef = ref(db, 'shop_items');
+    
+        onValue(itemsRef, (snapshot) => {
+            const data = snapshot.val();
+            listContainer.innerHTML = "";
+            if (!data) {
+                listContainer.innerHTML = "<p>現在販売中のアイテムはありません。</p>";
+                return;
+            }
+        
+            Object.keys(data).forEach(key => {
+                const item = data[key];
+                listContainer.innerHTML += `
+                    <div class="item-card">
+                        <img src="${item.img}" alt="${item.name}">
+                        <h4>${item.name}</h4>
+                        <p>${item.cost.toLocaleString()} P</p>
+                        <button onclick="buyItem('${item.name}', ${item.cost})">注文する</button>
+                    </div>
+                `;
+            });
         });
 
         function showToast(msg) {
@@ -93,7 +106,6 @@
             msgEl.innerText = `${itemName} を購入しますか？`;
             modal.style.display = 'flex';
 
-            // 「はい」をクリックした時の処理
             document.getElementById('confirm-yes').onclick = () => {
                 modal.style.display = 'none';
                 const itemPrice = parseInt(price);
@@ -108,8 +120,7 @@
                         return;
                     }
 
-                    // --- 購入成功後の処理 ---
-                    // 1. Webhook通知
+
                     fetch(SHOP_WEBHOOK_URL, {
                         method: "POST",
                         headers: {"Content-Type":"application/json"},
@@ -118,7 +129,6 @@
                         })
                     });
 
-                    // 2. 完了通知を表示
                     showToast(`${itemName} を購入しました！`);
 
                 }).catch(err => {
@@ -127,7 +137,6 @@
                 });
             };
 
-            // 「いいえ」をクリックした時の処理
             document.getElementById('confirm-no').onclick = () => {
                 modal.style.display = 'none';
             };
