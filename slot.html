@@ -23,7 +23,7 @@
         <div class="modal-card">
             <h3>??? UNLOCK</h3>
             <p>パスワードを入力してください</p>
-            <input type="text" id="slot-pw-input" placeholder="パスワードを入力..." 
+            <input type="text" id="slot-pw-input" placeholder="i〇〇〇i" 
                    style="width: 85%; padding: 12px; margin: 15px 0; font-size: 1.1em; text-align: center; border: 2px solid #ddd; border-radius: 8px;">
             
             <div class="modal-btns" style="flex-direction: column; gap: 10px;">
@@ -83,7 +83,7 @@
         }
 
         async function initSlotPage() {
-            const SECRET_PW = "password"; 
+            const SECRET_PW = "ippei"; 
             const unlockRef = ref(db, `user_stats/${user.id}/slot_unlocked`);
             const pointsRef = ref(db, `teams/${user.teamId}/points`);
             
