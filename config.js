@@ -28,20 +28,20 @@ export const TEAMS = {
 };
 
 export const USERS = {
-    "a01": { pass: "ada", name: "アダ", team: "team_a" },
-    "a02": { pass: "udou", name: "有働", team: "team_a" },
-    "a03": { pass: "yamamoto", name: "山本", team: "team_a" },
-    "a04": { pass: "suyama", name:"陶山", team:"team_a" },
-    "a05": { pass: "usawa", name:"鵜澤", team:"team_a" },
-    "b01": { pass: "higuchi", name: "樋口", team: "team_b" },
-    "b02": { pass: "kiso", name:"木曽", team: "team_b" },
-    "b03": { pass: "hirata", name:"平田", team: "team_b" },
-    "b04": { pass: "shimizuishi", name:"清水石", team: "team_b" },
-    "b05": { pass: "kawamura", name:"川村", team: "team_b" },
-    "c01": { pass: "sakaziri", name:"坂後", team: "team_c" },
-    "c02": { pass: "miyaji", name:"宮地", team: "team_c" },
-    "c03": { pass: "sakai", name:"坂井", team: "team_c" },
-    "c04": { pass: "kimura", name:"木村", team: "team_c" },
+    "a01": { pass: "0101", name: "アダ", team: "team_a" },
+    "a02": { pass: "0202", name: "有働", team: "team_a" },
+    "a03": { pass: "0303", name: "山本", team: "team_a" },
+    "a04": { pass: "0404", name:"陶山", team:"team_a" },
+    "a05": { pass: "0505", name:"鵜澤", team:"team_a" },
+    "b01": { pass: "0606", name: "樋口", team: "team_b" },
+    "b02": { pass: "0707", name:"木曽", team: "team_b" },
+    "b03": { pass: "0808", name:"平田", team: "team_b" },
+    "b04": { pass: "0909", name:"清水石", team: "team_b" },
+    "b05": { pass: "1010", name:"川村", team: "team_b" },
+    "c01": { pass: "1111", name:"坂後", team: "team_c" },
+    "c02": { pass: "1212", name:"宮地", team: "team_c" },
+    "c03": { pass: "1313", name:"坂井", team: "team_c" },
+    "c04": { pass: "1414", name:"木村", team: "team_c" },
     "t01": { pass: "test", name:"デバッグ", team: "team_t"}
 };
 
