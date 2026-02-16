@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食事席</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .food-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+        .seat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0;
+        }
+        .seat-image {
+            max-width: 90%;
+            height: auto;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .off-message {
+            display: none; /* 初期状態は非表示 */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="shop.html"><img src="shop_icon.png" alt="Shop">ショップ</a>
+            <a href="slot.html"><img src="slot_icon.png" alt="Slot">？？？</a>
+            <a href="food.html" class="active"><img src="food_icon.png" alt="Food">席順</a>
+        </nav>
+
+        <div id="user-badge">
+            <span id="display-team"></span>：<strong id="display-name"></strong> さん
+            <a href="#" id="logout-link">ログアウト</a>
+        </div>
+
+        <div id="food-content" class="food-container" style="display:none;">
+            <h2>本日の座席</h2>
+            <div class="seat-number">あなたの今日の席は <span id="seat-n">--</span> 番です</div>
+            <div id="seat-img-wrap">
+                </div>
+        </div>
+
+        <div id="food-off" class="off-message">
+            時間外です
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, getUserInfo } from './config.js';
+        import { ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        const user = getUserInfo();
+        if (!user) {
+            window.location.href = 'login.html';
+        } else {
+            // ユーザー情報表示
+            document.getElementById('display-team').innerText = user.teamName;
+            document.getElementById('display-name').innerText = user.name;
+
+            const isFoodRef = ref(db, 'settings/isfood');
+            const userFoodRef = ref(db, `user_stats/${user.id}/food`);
+
+            // 1. 表示設定(isfood)の監視
+            onValue(isFoodRef, (snapshot) => {
+                const isFood = snapshot.val();
+                const contentEl = document.getElementById('food-content');
+                const offEl = document.getElementById('food-off');
+
+                if (isFood === true) {
+                    contentEl.style.display = 'block';
+                    offEl.style.display = 'none';
+                } else {
+                    contentEl.style.display = 'none';
+                    offEl.style.display = 'block';
+                }
+            });
+
+            // 2. 自分の席番号(food)の監視
+            onValue(userFoodRef, (snapshot) => {
+                const n = snapshot.val();
+                const seatDisplay = document.getElementById('seat-n');
+                const imgWrap = document.getElementById('seat-img-wrap');
+
+                if (n) {
+                    seatDisplay.innerText = n;
+                    // N.png を表示
+                    imgWrap.innerHTML = `<img src="${n}.png" alt="席図" class="seat-image">`;
+                } else {
+                    seatDisplay.innerText = "未設定";
+                    imgWrap.innerHTML = "<p>席が割り当てられていません</p>";
+                }
+            });
+        }
+
+        document.getElementById('logout-link').onclick = () => { 
+            localStorage.removeItem('userId'); 
+            window.location.href = 'login.html'; 
+        };
+    </script>
+</body>
+</html>
