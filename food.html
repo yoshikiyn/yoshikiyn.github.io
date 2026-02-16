@@ -3,35 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>食事席</title>
+    <title>席順確認</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .food-container {
             text-align: center;
-            margin-top: 50px;
+            margin-top: 30px;
         }
         .seat-number {
-            font-size: 2.5em;
+            font-size: 2.2em;
             font-weight: bold;
             color: #2c3e50;
             margin: 20px 0;
         }
         .seat-image {
-            max-width: 90%;
+            max-width: 100%;
             height: auto;
-            border: 3px solid #ddd;
+            border: 2px solid #ddd;
             border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-        .off-message {
-            display: none; /* 初期状態は非表示 */
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.5em;
+        /* コンテナ内で中央に配置するスタイル */
+        .off-message-area {
+            text-align: center;
+            padding: 100px 20px;
+            font-size: 1.6em;
             font-weight: bold;
-            color: #888;
+            color: #aaa;
         }
     </style>
 </head>
@@ -51,11 +49,11 @@
         <div id="food-content" class="food-container" style="display:none;">
             <h2>本日の座席</h2>
             <div class="seat-number">あなたの今日の席は <span id="seat-n">--</span> 番です</div>
-            <div id="seat-img-wrap">
+            <div id="seat-img-wrap" style="margin-top: 20px;">
                 </div>
         </div>
 
-        <div id="food-off" class="off-message">
+        <div id="food-off" class="off-message-area" style="display:none;">
             時間外です
         </div>
     </div>
@@ -68,14 +66,14 @@
         if (!user) {
             window.location.href = 'login.html';
         } else {
-            // ユーザー情報表示
+            // ユーザー情報の表示
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
 
             const isFoodRef = ref(db, 'settings/isfood');
             const userFoodRef = ref(db, `user_stats/${user.id}/food`);
 
-            // 1. 表示設定(isfood)の監視
+            // 表示スイッチの監視
             onValue(isFoodRef, (snapshot) => {
                 const isFood = snapshot.val();
                 const contentEl = document.getElementById('food-content');
@@ -83,14 +81,15 @@
 
                 if (isFood === true) {
                     contentEl.style.display = 'block';
-                    offEl.style.display = 'none';
+                    offEl.style.display = 'block'; // 一旦出す（メッセージ用）が、直下のロジックで制御
+                    offEl.style.display = 'none'; 
                 } else {
                     contentEl.style.display = 'none';
                     offEl.style.display = 'block';
                 }
             });
 
-            // 2. 自分の席番号(food)の監視
+            // 席番号の監視
             onValue(userFoodRef, (snapshot) => {
                 const n = snapshot.val();
                 const seatDisplay = document.getElementById('seat-n');
@@ -98,7 +97,6 @@
 
                 if (n) {
                     seatDisplay.innerText = n;
-                    // N.png を表示
                     imgWrap.innerHTML = `<img src="${n}.png" alt="席図" class="seat-image">`;
                 } else {
                     seatDisplay.innerText = "未設定";
@@ -107,7 +105,8 @@
             });
         }
 
-        document.getElementById('logout-link').onclick = () => { 
+        document.getElementById('logout-link').onclick = (e) => { 
+            e.preventDefault();
             localStorage.removeItem('userId'); 
             window.location.href = 'login.html'; 
         };
