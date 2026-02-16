@@ -155,4 +155,49 @@
                 manual_rate: parseInt(document.getElementById('manual-rate').value) || 0,
                 auto_min: parseInt(document.getElementById('auto-min').value) || 0,
                 auto_max: parseInt(document.getElementById('auto-max').value) || 0,
-                isfood: document.getElementById('isf
+                isfood: document.getElementById('isfood-toggle').checked
+            };
+            update(ref(db, 'settings'), newData).then(() => {
+                alert("設定を保存しました！");
+                updateCalcDisplay(newData);
+            });
+        };
+
+        // --- 席順シャッフル割り当てロジック ---
+        document.getElementById('shuffle-seats').onclick = () => {
+            const maxSeat = parseInt(document.getElementById('max-seats').value);
+            if (maxSeat < USER_IDS.length) {
+                alert(`席数が足りません！最低 ${USER_IDS.length} 以上にしてください。`);
+                return;
+            }
+
+            if (!confirm("全員の席番号をランダムに割り当て直します。よろしいですか？")) return;
+
+            // 1. 1～maxSeat までの配列を作成
+            let numbers = [];
+            for (let i = 1; i <= maxSeat; i++) {
+                numbers.push(i);
+            }
+
+            // 2. フィッシャー–イェーツのシャッフル
+            for (let i = numbers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+            }
+
+            // 3. ユーザーリストに順番に割り当て（一括アップデート用オブジェクト作成）
+            const updates = {};
+            USER_IDS.forEach((userId, index) => {
+                updates[`user_stats/${userId}/food`] = numbers[index];
+            });
+
+            // 4. Firebaseを更新
+            update(ref(db), updates).then(() => {
+                alert("席順のシャッフルが完了しました！");
+            }).catch(err => {
+                alert("シャッフル失敗: " + err.message);
+            });
+        };
+    </script>
+</body>
+</html>
