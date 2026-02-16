@@ -12,19 +12,18 @@
         input[type="number"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
         .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-save:active { background: #0056b3; }
+        .btn-shuffle { background: #e67e22; margin-top: 20px; } /* オレンジ色 */
         .current-status { font-size: 0.9em; color: #666; text-align: center; margin-bottom: 10px; }
+        .toggle-row { background: #f8f9fa; font-weight: bold; }
     </style>
 </head>
 <body>
     <script>
-        // --- 簡易パスワード保護 ---
         const ADMIN_PASSWORD = "admin";
         const input = prompt("管理用パスワードを入力してください");
-    
         if (input !== ADMIN_PASSWORD) {
             alert("パスワードが違います。アクセス権限がありません。");
             window.location.href = "login.html";
-            document.documentElement.style.display = "none";
         }
     </script>
 
@@ -63,8 +62,24 @@
                     <div><input type="number" id="auto-max" min="0" max="100"> %</div>
                 </div>
             </div>
+            <button id="save-settings" class="btn-save">スロット設定を保存</button>
+        </div>
 
-            <button id="save-settings" class="btn-save">設定を保存して反映</button>
+        <div class="admin-section">
+            <h2>席順管理</h2>
+            
+            <div class="admin-row toggle-row">
+                <span>席順画面を表示する(isfood)</span>
+                <input type="checkbox" id="isfood-toggle" style="transform: scale(1.5);">
+            </div>
+
+            <div class="admin-row">
+                <span>最大席数 (1～N)</span>
+                <div><input type="number" id="max-seats" value="20" min="14"></div>
+            </div>
+
+            <button id="shuffle-seats" class="btn-save btn-shuffle">席順をシャッフルして割り当て</button>
+            <p style="font-size: 0.8em; color: #d35400; margin-top: 10px;">※ボタンを押すと、全員の席番号が即座に更新されます。</p>
         </div>
         
         <p style="text-align: center;"><a href="shop.html">ショップ画面へ戻る</a></p>
@@ -74,7 +89,14 @@
         import { db, TEAMS } from './config.js';
         import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        // --- チームポイントのリアルタイム表示 ---
+        // 対象ユーザーリスト
+        const USER_IDS = [
+            'a01','a02','a03','a04','a05',
+            'b01','b02','b03','b04','b05',
+            'c01','c02','c03','c04'
+        ];
+
+        // --- チームポイント表示 ---
         const listDiv = document.getElementById('admin-list');
         onValue(ref(db, 'teams'), (snapshot) => {
             const data = snapshot.val() || {};
@@ -91,8 +113,6 @@
                     </div>
                 `;
                 listDiv.appendChild(row);
-                
-                // 動的に追加したボタンにイベント登録
                 document.getElementById(`btn-${teamId}`).onclick = () => {
                     const newVal = prompt(`${TEAMS[teamId].name} のポイントを入力`, points);
                     if (newVal !== null && !isNaN(parseInt(newVal))) {
@@ -102,54 +122,37 @@
             });
         });
 
-        // --- 確率設定の読み込み（入力の邪魔をしないよう一回だけ取得） ---
-        const fields = {
-            mode: document.getElementById('mode-select'),
-            manual: document.getElementById('manual-rate'),
-            min: document.getElementById('auto-min'),
-            max: document.getElementById('auto-max')
-        };
-
+        // --- 設定値の読み込み ---
         get(ref(db, 'settings')).then((snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                fields.mode.value = data.mode || "auto";
-                fields.manual.value = data.manual_rate || 0;
-                fields.min.value = data.auto_min || 0;
-                fields.max.value = data.auto_max || 0;
+                document.getElementById('mode-select').value = data.mode || "auto";
+                document.getElementById('manual-rate').value = data.manual_rate || 0;
+                document.getElementById('auto-min').value = data.auto_min || 0;
+                document.getElementById('auto-max').value = data.auto_max || 0;
+                document.getElementById('isfood-toggle').checked = data.isfood || false;
                 updateCalcDisplay(data);
             }
         });
 
-        // 現在の計算上の確率を画面に表示するおまけ機能
         function updateCalcDisplay(data) {
             const display = document.getElementById('calc-rate-display');
             if (data.mode === 'manual') {
                 display.innerText = `現在の設定: 手動 (${data.manual_rate}%)`;
             } else {
                 const now = new Date();
-                const ratio = (now.getHours() * 60 + now.getMinutes()) / 1439;
+                const totalMin = now.getHours() * 60 + now.getMinutes();
+                const ratio = Math.abs(totalMin - 720) / 720; // 12:00ベースのV字
                 const rate = data.auto_min + (data.auto_max - data.auto_min) * ratio;
-                display.innerText = `現在の計算レート: 約 ${rate.toFixed(1)}% (自動)`;
+                display.innerText = `現在の計算レート: 約 ${rate.toFixed(1)}% (自動V字)`;
             }
         }
 
-        // --- 設定の保存処理 ---
+        // --- スロット設定保存 ---
         document.getElementById('save-settings').onclick = () => {
             const newData = {
-                mode: fields.mode.value,
-                manual_rate: parseInt(fields.manual.value) || 0,
-                auto_min: parseInt(fields.min.value) || 0,
-                auto_max: parseInt(fields.max.value) || 0
-            };
-
-            update(ref(db, 'settings'), newData).then(() => {
-                alert("確率設定を保存しました！");
-                updateCalcDisplay(newData);
-            }).catch(err => {
-                alert("保存に失敗しました: " + err.message);
-            });
-        };
-    </script>
-</body>
-</html>
+                mode: document.getElementById('mode-select').value,
+                manual_rate: parseInt(document.getElementById('manual-rate').value) || 0,
+                auto_min: parseInt(document.getElementById('auto-min').value) || 0,
+                auto_max: parseInt(document.getElementById('auto-max').value) || 0,
+                isfood: document.getElementById('isf
