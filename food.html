@@ -7,14 +7,18 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .food-container { text-align: center; margin-top: 20px; }
+        
+        /* 横はみ出し対策 */
         .grid-wrapper {
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            padding: 20px 0;
+            padding: 10px 0 20px 0;
             display: flex;
             justify-content: center;
         }
+
+        /* 右下起点の設定 */
         #seat-grid {
             display: inline-flex;
             flex-direction: column-reverse; 
@@ -22,27 +26,51 @@
             padding: 15px;
             background: #f9f9f9;
             border-radius: 12px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
         }
-        .grid-row { display: flex; flex-direction: row-reverse; gap: 10px; }
+
+        .grid-row {
+            display: flex;
+            flex-direction: row-reverse; 
+            gap: 10px;
+        }
+
         .seat-box {
-            width: 45px; height: 45px; min-width: 45px;
+            width: 45px;
+            height: 45px;
+            min-width: 45px;
             border: 1px solid #aaa;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1em; background: #fff; border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1em;
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
         }
+
         /* 自分の席 */
         .seat-box.my-seat {
-            background: #ff4d4d !important; color: white !important; font-weight: bold;
-            border: 2px solid #b30000; transform: scale(1.1); z-index: 5;
+            background: #ff4d4d !important;
+            color: white !important;
+            font-weight: bold;
+            border: 2px solid #b30000;
+            transform: scale(1.1);
+            z-index: 10;
         }
-        /* 除外された席（グレーアウト） */
+
+        /* 除外された席 */
         .seat-box.excluded {
             background: #eee !important;
             color: #ccc !important;
             border-color: #ddd !important;
-            box-shadow: none !important;
         }
-        .corridor { margin-top: 30px; }
+
+        /* 廊下 */
+        .corridor {
+            margin-top: 30px; 
+        }
+
         .off-message-area { text-align: center; padding: 100px 20px; font-size: 1.5em; color: #aaa; }
     </style>
 </head>
@@ -53,18 +81,23 @@
             <a href="slot.html"><img src="slot_icon.png" alt="Slot">？？？</a>
             <a href="food.html" class="active"><img src="food_icon.png" alt="Food">席順</a>
         </nav>
+
         <div id="user-badge">
             <span id="display-team"></span>：<strong id="display-name"></strong> さん
             <a href="#" id="logout-link">ログアウト</a>
         </div>
+
         <div id="food-content" class="food-container" style="display:none;">
             <h2>本日の座席</h2>
-            <p>あなたの席: <strong id="seat-n" style="font-size: 2em; color: #ff4d4d;">--</strong> 番</p>
+            <p style="margin-bottom: 5px;">あなたの席: <strong id="seat-n" style="font-size: 2.2em; color: #ff4d4d;">--</strong> 番</p>
+            
+            <p style="font-size: 0.8em; color: #888; margin-bottom: 15px;">※右下が1番です。表は左右にスクロールできます。</p>
+            
             <div class="grid-wrapper">
                 <div id="seat-grid"></div>
             </div>
-            <p style="font-size: 0.8em; color: #888;">※右下が1番です。表は横スクロールできます。</p>
         </div>
+
         <div id="food-off" class="off-message-area" style="display:none;">時間外です</div>
     </div>
 
@@ -78,25 +111,32 @@
         } else {
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
-            let config = {}; let myNum = null;
+
+            let config = {};
+            let myNum = null;
 
             onValue(ref(db, 'settings'), (snap) => {
                 config = snap.val() || {};
-                const isFood = config.isfood === true;
-                document.getElementById('food-content').style.display = isFood ? 'block' : 'none';
-                document.getElementById('food-off').style.display = isFood ? 'none' : 'block';
-                if (isFood) renderGrid();
+                updateView();
             });
 
             onValue(ref(db, `user_stats/${user.id}/food`), (snap) => {
                 myNum = snap.val();
                 document.getElementById('seat-n').innerText = myNum || "--";
-                if (config.isfood) renderGrid();
+                updateView();
             });
+
+            function updateView() {
+                const isFood = config.isfood === true;
+                document.getElementById('food-content').style.display = isFood ? 'block' : 'none';
+                document.getElementById('food-off').style.display = isFood ? 'none' : 'block';
+                if (isFood) renderGrid();
+            }
 
             function renderGrid() {
                 const grid = document.getElementById('seat-grid');
                 grid.innerHTML = "";
+                
                 const rows = Number(config.rows) || 1;
                 const cols = Number(config.cols) || 1;
                 const end = Number(config.end_num) || (rows * cols);
@@ -106,7 +146,10 @@
                 for (let r = 1; r <= rows; r++) {
                     const rowDiv = document.createElement('div');
                     rowDiv.className = "grid-row";
-                    if (r % 2 === 0 && r < rows) rowDiv.classList.add('corridor');
+                    
+                    if (r % 2 === 0 && r < rows) {
+                        rowDiv.classList.add('corridor');
+                    }
 
                     for (let c = 1; c <= cols; c++) {
                         const seatNum = (r - 1) * cols + c;
@@ -118,7 +161,7 @@
                             if (excludes.includes(seatNum)) box.classList.add('excluded');
                             if (Number(seatNum) === Number(myNum)) box.classList.add('my-seat');
                         } else {
-                            box.style.visibility = "hidden"; // 終了番号より先は枠ごと消す
+                            box.style.visibility = "hidden";
                         }
                         rowDiv.appendChild(box);
                     }
@@ -127,7 +170,9 @@
             }
         }
         document.getElementById('logout-link').onclick = (e) => { 
-            e.preventDefault(); localStorage.removeItem('userId'); window.location.href = 'login.html'; 
+            e.preventDefault();
+            localStorage.removeItem('userId'); 
+            window.location.href = 'login.html'; 
         };
     </script>
 </body>
