@@ -159,7 +159,7 @@
         startBtn.onclick = () => {
             if (isPlaying) return;
             const bet = parseInt(document.getElementById('bet').value);
-            if (isNaN(bet) || bet < 10) return showToast("10Pからのみ賭けられます");
+            if (isNaN(bet) || bet < 10 || bet > 200) return showToast("10Pから200Pのみ賭けられます");
 
             runTransaction(ref(db, `teams/${user.teamId}/points`), p => {
                 if (p < bet) return; 
