@@ -6,31 +6,47 @@
     <title>席順確認</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        .food-container {
-            text-align: center;
-            margin-top: 30px;
+        .food-container { text-align: center; margin-top: 20px; }
+        /* 右下を1番にするための設定:
+           - column-reverse: 下から上へ並べる
+           - row-reverse: 右から左へ並べる
+        */
+        #seat-grid {
+            display: flex;
+            flex-direction: column-reverse; 
+            gap: 8px;
+            align-items: center;
+            margin: 20px auto;
+            padding: 10px;
         }
-        .seat-number {
-            font-size: 2.2em;
+        .grid-row {
+            display: flex;
+            flex-direction: row-reverse; 
+            gap: 8px;
+        }
+        .seat-box {
+            width: 45px;
+            height: 45px;
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .seat-box.my-seat {
+            background: #ff4d4d !important;
+            color: white;
             font-weight: bold;
-            color: #2c3e50;
-            margin: 20px 0;
+            border: 2px solid #b30000;
+            transform: scale(1.1);
         }
-        .seat-image {
-            max-width: 100%;
-            height: auto;
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        /* 廊下: 下から数えて2行ごとに隙間を空ける */
+        .corridor {
+            margin-bottom: 30px; 
         }
-        /* コンテナ内で中央に配置するスタイル */
-        .off-message-area {
-            text-align: center;
-            padding: 100px 20px;
-            font-size: 1.6em;
-            font-weight: bold;
-            color: #aaa;
-        }
+        .off-message-area { text-align: center; padding: 100px 20px; font-size: 1.5em; color: #aaa; }
     </style>
 </head>
 <body>
@@ -48,14 +64,11 @@
 
         <div id="food-content" class="food-container" style="display:none;">
             <h2>本日の座席</h2>
-            <div class="seat-number">あなたの今日の席は <span id="seat-n">--</span> 番です</div>
-            <div id="seat-img-wrap" style="margin-top: 20px;">
-                </div>
+            <p>あなたの席: <strong id="seat-n" style="font-size: 1.8em; color: #ff4d4d;">--</strong> 番</p>
+            <div id="seat-grid"></div>
         </div>
 
-        <div id="food-off" class="off-message-area" style="display:none;">
-            時間外です
-        </div>
+        <div id="food-off" class="off-message-area" style="display:none;">時間外です</div>
     </div>
 
     <script type="module">
@@ -66,50 +79,59 @@
         if (!user) {
             window.location.href = 'login.html';
         } else {
-            // ユーザー情報の表示
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
 
-            const isFoodRef = ref(db, 'settings/isfood');
-            const userFoodRef = ref(db, `user_stats/${user.id}/food`);
+            let config = {};
+            let myNum = 0;
 
-            // 表示スイッチの監視
-            onValue(isFoodRef, (snapshot) => {
-                const isFood = snapshot.val();
-                const contentEl = document.getElementById('food-content');
-                const offEl = document.getElementById('food-off');
-
-                if (isFood === true) {
-                    contentEl.style.display = 'block';
-                    offEl.style.display = 'block'; // 一旦出す（メッセージ用）が、直下のロジックで制御
-                    offEl.style.display = 'none'; 
-                } else {
-                    contentEl.style.display = 'none';
-                    offEl.style.display = 'block';
-                }
+            // 設定と席番号を監視
+            onValue(ref(db, 'settings'), (snap) => {
+                config = snap.val() || {};
+                const isFood = config.isfood || false;
+                document.getElementById('food-content').style.display = isFood ? 'block' : 'none';
+                document.getElementById('food-off').style.display = isFood ? 'none' : 'block';
+                renderGrid();
             });
 
-            // 席番号の監視
-            onValue(userFoodRef, (snapshot) => {
-                const n = snapshot.val();
-                const seatDisplay = document.getElementById('seat-n');
-                const imgWrap = document.getElementById('seat-img-wrap');
-
-                if (n) {
-                    seatDisplay.innerText = n;
-                    imgWrap.innerHTML = `<img src="${n}.png" alt="席図" class="seat-image">`;
-                } else {
-                    seatDisplay.innerText = "未設定";
-                    imgWrap.innerHTML = "<p>席が割り当てられていません</p>";
-                }
+            onValue(ref(db, `user_stats/${user.id}/food`), (snap) => {
+                myNum = snap.val();
+                document.getElementById('seat-n').innerText = myNum || "--";
+                renderGrid();
             });
+
+            function renderGrid() {
+                const grid = document.getElementById('seat-grid');
+                grid.innerHTML = "";
+                
+                const rows = config.rows || 1;
+                const cols = config.cols || 1;
+                const start = config.start_num || 1;
+
+                for (let r = 1; r <= rows; r++) {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = "grid-row";
+                    
+                    // 下から数えて（r=1が最下行）、偶数行の後に廊下を入れる
+                    if (r % 2 === 0 && r < rows) {
+                        rowDiv.classList.add('corridor');
+                    }
+
+                    for (let c = 1; c <= cols; c++) {
+                        // 右下(r=1, c=1)を起点に番号を振る
+                        const seatNum = start + ((r - 1) * cols + (c - 1));
+                        const box = document.createElement('div');
+                        box.className = "seat-box";
+                        box.innerText = seatNum;
+
+                        if (seatNum === myNum) box.classList.add('my-seat');
+                        rowDiv.appendChild(box);
+                    }
+                    grid.appendChild(rowDiv);
+                }
+            }
         }
-
-        document.getElementById('logout-link').onclick = (e) => { 
-            e.preventDefault();
-            localStorage.removeItem('userId'); 
-            window.location.href = 'login.html'; 
-        };
+        document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
     </script>
 </body>
 </html>
