@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -9,7 +9,8 @@
         .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
         .admin-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
         .admin-row strong { font-size: 1.2em; color: #28a745; }
-        input[type="number"], input[type="text"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="number"], input[type="text"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; width: 100px; }
+        #exclude-nums { width: 100%; max-width: 250px; }
         .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-shuffle { background: #e67e22; margin-top: 20px; }
         .current-status { font-size: 0.9em; color: #666; text-align: center; margin-bottom: 10px; }
@@ -38,7 +39,7 @@
             <div id="calc-rate-display" class="current-status">現在の計算レート: -- %</div>
             <div class="admin-row">
                 <span>動作モード</span>
-                <select id="mode-select">
+                <select id="mode-select" style="width: auto;">
                     <option value="auto">時間連動（自動V字）</option>
                     <option value="manual">数値指定（手動）</option>
                 </select>
@@ -52,18 +53,22 @@
             <h2>席順グリッド管理</h2>
             <div class="admin-row" style="background:#f9f9f9;">
                 <span>席順を表示する(isfood)</span>
-                <input type="checkbox" id="isfood-toggle">
+                <input type="checkbox" id="isfood-toggle" style="transform: scale(1.5);">
             </div>
-            <div class="admin-row"><span>列数 (横)</span><input type="number" id="grid-cols"></div>
-            <div class="admin-row"><span>行数 (縦)</span><input type="number" id="grid-rows"></div>
+            <div class="admin-row"><span>列数 (横のマス数)</span><input type="number" id="grid-cols"></div>
+            <div class="admin-row"><span>行数 (縦のマス数)</span><input type="number" id="grid-rows"></div>
             <div class="admin-row"><span>開始番号</span><input type="number" id="start-num"></div>
             <div class="admin-row"><span>終了番号</span><input type="number" id="end-num"></div>
-            <div class="admin-row">
+            <div class="admin-row" style="flex-direction: column; align-items: flex-start; gap: 5px;">
                 <span>除外番号 (カンマ区切り)</span>
-                <input type="text" id="exclude-nums" placeholder="5, 12, 13">
+                <input type="text" id="exclude-nums" placeholder="例: 31, 32, 33">
             </div>
             <button id="save-food-settings" class="btn-save" style="background:#28a745;">グリッド設定を保存</button>
-            <button id="shuffle-seats" class="btn-save btn-shuffle">除外番号を飛ばしてシャッフル</button>
+            
+            <button id="shuffle-seats" class="btn-save btn-shuffle">全ユーザー一括シャッフル実行</button>
+            <p style="font-size: 0.8em; color: #d35400; margin-top: 10px; text-align: center;">
+                ※全36名分を一括で割り当てます。重複は発生しません。
+            </p>
         </div>
         
         <p style="text-align: center;"><a href="shop.html">ショップ画面へ戻る</a></p>
@@ -73,8 +78,16 @@
         import { db, TEAMS } from './config.js';
         import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        const USER_IDS = ['a01','a02','a03','a04','a05','b01','b02','b03','b04','b05','c01','c02','c03','c04','u01','u02','u03','u04','u05','u06','u07','u08','u09','u10','u11','u12','u13','u14','s01','s02','s03','s04','s05','s06','s07','s08'];
+        // 全ユーザーIDリスト (36名)
+        const USER_IDS = [
+            'a01','a02','a03','a04','a05',
+            'b01','b02','b03','b04','b05',
+            'c01','c02','c03','c04',
+            'u01','u02','u03','u04','u05','u06','u07','u08','u09','u10','u11','u12','u13','u14',
+            's01','s02','s03','s04','s05','s06','s07','s08'
+        ];
 
+        // --- チームポイント表示 ---
         onValue(ref(db, 'teams'), (snap) => {
             const data = snap.val() || {};
             const listDiv = document.getElementById('admin-list');
@@ -86,12 +99,13 @@
                 row.innerHTML = `<span>${TEAMS[tid].name}</span><div><strong>${p} P</strong> <button id="btn-${tid}">変更</button></div>`;
                 listDiv.appendChild(row);
                 document.getElementById(`btn-${tid}`).onclick = () => {
-                    const v = prompt("ポイント入力", p);
-                    if(v) set(ref(db, `teams/${tid}/points`), parseInt(v));
+                    const v = prompt(`${TEAMS[tid].name} のポイント入力`, p);
+                    if(v !== null) set(ref(db, `teams/${tid}/points`), parseInt(v));
                 };
             });
         });
 
+        // --- 設定読み込み ---
         get(ref(db, 'settings')).then(snap => {
             if(!snap.exists()) return;
             const d = snap.val();
@@ -99,52 +113,86 @@
             document.getElementById('auto-min').value = d.auto_min || 0;
             document.getElementById('auto-max').value = d.auto_max || 0;
             document.getElementById('isfood-toggle').checked = d.isfood || false;
-            document.getElementById('grid-cols').value = d.cols || 4;
-            document.getElementById('grid-rows').value = d.rows || 6;
-            document.getElementById('start-num').value = d.start_num || 1;
-            document.getElementById('end-num').value = d.end_num || 24;
+            document.getElementById('grid-cols').value = d.cols || 10;
+            document.getElementById('grid-rows').value = d.rows || 4;
+            document.getElementById('start-num').value = d.start_num || 30;
+            document.getElementById('end-num').value = d.end_num || 80;
             document.getElementById('exclude-nums').value = d.exclude_nums || "";
+            updateCalcDisplay(d);
         });
 
+        function updateCalcDisplay(data) {
+            const display = document.getElementById('calc-rate-display');
+            if (data.mode === 'manual') {
+                display.innerText = `現在の設定: 手動 (${data.manual_rate || 0}%)`;
+            } else {
+                const now = new Date();
+                const totalMin = now.getHours() * 60 + now.getMinutes();
+                const ratio = Math.abs(totalMin - 720) / 720; // V字
+                const rate = Number(data.auto_min || 0) + (Number(data.auto_max || 0) - Number(data.auto_min || 0)) * ratio;
+                display.innerText = `現在の計算レート: 約 ${rate.toFixed(1)}% (自動V字)`;
+            }
+        }
+
+        // --- 保存処理 ---
         const saveAll = () => {
             const d = {
                 mode: document.getElementById('mode-select').value,
                 auto_min: parseInt(document.getElementById('auto-min').value) || 0,
                 auto_max: parseInt(document.getElementById('auto-max').value) || 0,
                 isfood: document.getElementById('isfood-toggle').checked,
-                cols: parseInt(document.getElementById('grid-cols').value) || 4,
-                rows: parseInt(document.getElementById('grid-rows').value) || 6,
-                start_num: parseInt(document.getElementById('start-num').value) || 1,
-                end_num: parseInt(document.getElementById('end-num').value) || 24,
+                cols: parseInt(document.getElementById('grid-cols').value) || 10,
+                rows: parseInt(document.getElementById('grid-rows').value) || 4,
+                start_num: parseInt(document.getElementById('start-num').value) || 30,
+                end_num: parseInt(document.getElementById('end-num').value) || 80,
                 exclude_nums: document.getElementById('exclude-nums').value
             };
-            update(ref(db, 'settings'), d).then(() => alert("保存しました"));
+            update(ref(db, 'settings'), d).then(() => {
+                alert("設定を保存しました");
+                updateCalcDisplay(d);
+            });
         };
         document.getElementById('save-settings').onclick = saveAll;
         document.getElementById('save-food-settings').onclick = saveAll;
 
+        // --- シャッフル (重複なし一括処理) ---
         document.getElementById('shuffle-seats').onclick = () => {
             const s = parseInt(document.getElementById('start-num').value);
             const e = parseInt(document.getElementById('end-num').value);
             const exStr = document.getElementById('exclude-nums').value;
             const excludes = exStr.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
 
+            // 利用可能な番号プールを作成
             let pool = [];
             for(let i=s; i<=e; i++) {
                 if(!excludes.includes(i)) pool.push(i);
             }
 
-            if(pool.length < USER_IDS.length) return alert("除外後の残り席数が足りません！");
-            if(!confirm("シャッフルを実行しますか？")) return;
+            // 人数に対して席が足りているかチェック
+            if(pool.length < USER_IDS.length) {
+                alert(`除外後の席数が足りません！\n必要: ${USER_IDS.length} / 現在: ${pool.length}`);
+                return;
+            }
 
+            if(!confirm(`${USER_IDS.length}名分の席をシャッフルします。よろしいですか？`)) return;
+
+            // シャッフル
             for (let i = pool.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [pool[i], pool[j]] = [pool[j], pool[i]];
             }
 
             const updates = {};
-            USER_IDS.forEach((uid, idx) => { updates[`user_stats/${uid}/food`] = pool[idx]; });
-            update(ref(db), updates).then(() => alert("シャッフル完了"));
+            USER_IDS.forEach((uid, idx) => {
+                // 1つのプールから順番に割り当てるので絶対に被らない
+                updates[`user_stats/${uid}/food`] = pool[idx];
+            });
+
+            update(ref(db), updates).then(() => {
+                alert("全ユーザーのシャッフルが完了しました！");
+            }).catch(err => {
+                alert("エラー: " + err.message);
+            });
         };
     </script>
 </body>
