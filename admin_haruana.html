@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -9,7 +9,7 @@
         .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
         .admin-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
         .admin-row strong { font-size: 1.2em; color: #28a745; }
-        input[type="number"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; width: 80px; }
+        input[type="number"], input[type="text"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
         .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-shuffle { background: #e67e22; margin-top: 20px; }
         .current-status { font-size: 0.9em; color: #666; text-align: center; margin-bottom: 10px; }
@@ -38,47 +38,32 @@
             <div id="calc-rate-display" class="current-status">現在の計算レート: -- %</div>
             <div class="admin-row">
                 <span>動作モード</span>
-                <select id="mode-select" style="width: auto;">
+                <select id="mode-select">
                     <option value="auto">時間連動（自動V字）</option>
                     <option value="manual">数値指定（手動）</option>
                 </select>
             </div>
-            <div class="admin-row">
-                <span>手動 / 自動最小(12:00)</span>
-                <input type="number" id="auto-min">
-            </div>
-            <div class="admin-row">
-                <span>自動最大(00:00)</span>
-                <input type="number" id="auto-max">
-            </div>
+            <div class="admin-row"><span>自動最小(12:00)</span><input type="number" id="auto-min"></div>
+            <div class="admin-row"><span>自動最大(00:00)</span><input type="number" id="auto-max"></div>
             <button id="save-settings" class="btn-save">スロット設定を保存</button>
         </div>
 
         <div class="admin-section">
             <h2>席順グリッド管理</h2>
             <div class="admin-row" style="background:#f9f9f9;">
-                <span>席順を表示する</span>
+                <span>席順を表示する(isfood)</span>
                 <input type="checkbox" id="isfood-toggle">
             </div>
+            <div class="admin-row"><span>列数 (横)</span><input type="number" id="grid-cols"></div>
+            <div class="admin-row"><span>行数 (縦)</span><input type="number" id="grid-rows"></div>
+            <div class="admin-row"><span>開始番号</span><input type="number" id="start-num"></div>
+            <div class="admin-row"><span>終了番号</span><input type="number" id="end-num"></div>
             <div class="admin-row">
-                <span>列数 (横の数)</span>
-                <input type="number" id="grid-cols" value="4">
+                <span>除外番号 (カンマ区切り)</span>
+                <input type="text" id="exclude-nums" placeholder="5, 12, 13">
             </div>
-            <div class="admin-row">
-                <span>行数 (縦の数)</span>
-                <input type="number" id="grid-rows" value="6">
-            </div>
-            <div class="admin-row">
-                <span>番号範囲 (開始)</span>
-                <input type="number" id="start-num" value="1">
-            </div>
-            <div class="admin-row">
-                <span>番号範囲 (終了)</span>
-                <input type="number" id="end-num" value="24">
-            </div>
-            <button id="save-food-settings" class="btn-save" style="background:#28a745;">グリッド設定のみ保存</button>
-            
-            <button id="shuffle-seats" class="btn-save btn-shuffle">範囲内でランダムに席を割り当て</button>
+            <button id="save-food-settings" class="btn-save" style="background:#28a745;">グリッド設定を保存</button>
+            <button id="shuffle-seats" class="btn-save btn-shuffle">除外番号を飛ばしてシャッフル</button>
         </div>
         
         <p style="text-align: center;"><a href="shop.html">ショップ画面へ戻る</a></p>
@@ -90,7 +75,6 @@
 
         const USER_IDS = ['a01','a02','a03','a04','a05','b01','b02','b03','b04','b05','c01','c02','c03','c04'];
 
-        // ポイント表示
         onValue(ref(db, 'teams'), (snap) => {
             const data = snap.val() || {};
             const listDiv = document.getElementById('admin-list');
@@ -103,12 +87,11 @@
                 listDiv.appendChild(row);
                 document.getElementById(`btn-${tid}`).onclick = () => {
                     const v = prompt("ポイント入力", p);
-                    if(v !== null) set(ref(db, `teams/${tid}/points`), parseInt(v));
+                    if(v) set(ref(db, `teams/${tid}/points`), parseInt(v));
                 };
             });
         });
 
-        // 設定読み込み
         get(ref(db, 'settings')).then(snap => {
             if(!snap.exists()) return;
             const d = snap.val();
@@ -120,13 +103,10 @@
             document.getElementById('grid-rows').value = d.rows || 6;
             document.getElementById('start-num').value = d.start_num || 1;
             document.getElementById('end-num').value = d.end_num || 24;
+            document.getElementById('exclude-nums').value = d.exclude_nums || "";
         });
 
-        // 保存（一括）
-        document.getElementById('save-settings').onclick = () => saveAll();
-        document.getElementById('save-food-settings').onclick = () => saveAll();
-
-        function saveAll() {
+        const saveAll = () => {
             const d = {
                 mode: document.getElementById('mode-select').value,
                 auto_min: parseInt(document.getElementById('auto-min').value) || 0,
@@ -135,30 +115,35 @@
                 cols: parseInt(document.getElementById('grid-cols').value) || 4,
                 rows: parseInt(document.getElementById('grid-rows').value) || 6,
                 start_num: parseInt(document.getElementById('start-num').value) || 1,
-                end_num: parseInt(document.getElementById('end-num').value) || 24
+                end_num: parseInt(document.getElementById('end-num').value) || 24,
+                exclude_nums: document.getElementById('exclude-nums').value
             };
             update(ref(db, 'settings'), d).then(() => alert("保存しました"));
-        }
+        };
+        document.getElementById('save-settings').onclick = saveAll;
+        document.getElementById('save-food-settings').onclick = saveAll;
 
-        // シャッフル
         document.getElementById('shuffle-seats').onclick = () => {
             const s = parseInt(document.getElementById('start-num').value);
             const e = parseInt(document.getElementById('end-num').value);
-            const rangeSize = e - s + 1;
+            const exStr = document.getElementById('exclude-nums').value;
+            const excludes = exStr.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
 
-            if(rangeSize < USER_IDS.length) return alert("範囲が狭すぎます");
-            if(!confirm("席をシャッフルしますか？")) return;
+            let pool = [];
+            for(let i=s; i<=e; i++) {
+                if(!excludes.includes(i)) pool.push(i);
+            }
 
-            let pool = Array.from({length: rangeSize}, (_, i) => s + i);
+            if(pool.length < USER_IDS.length) return alert("除外後の残り席数が足りません！");
+            if(!confirm("シャッフルを実行しますか？")) return;
+
             for (let i = pool.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [pool[i], pool[j]] = [pool[j], pool[i]];
             }
 
             const updates = {};
-            USER_IDS.forEach((uid, idx) => {
-                updates[`user_stats/${uid}/food`] = pool[idx];
-            });
+            USER_IDS.forEach((uid, idx) => { updates[`user_stats/${uid}/food`] = pool[idx]; });
             update(ref(db), updates).then(() => alert("シャッフル完了"));
         };
     </script>
