@@ -50,6 +50,20 @@ export const USERS = {
     "s06": { pass: "2020", name:"西尾", team: "team_s" },
     "s07": { pass: "2121", name:"平井", team: "team_s" },
     "s08": { pass: "2222", name:"前田", team: "team_s" },
+    "u01": { pass: "2323", name:"小林", team: "team_u" },
+    "u02": { pass: "2424", name:"八幡", team: "team_u" },
+    "u03": { pass: "2525", name:"宮永", team: "team_u" },
+    "u04": { pass: "2626", name:"松本", team: "team_u" },
+    "u05": { pass: "2727", name:"松元", team: "team_u" },
+    "u06": { pass: "2828", name:"常岡", team: "team_u" },
+    "u07": { pass: "2929", name:"裏川", team: "team_u" },
+    "u08": { pass: "3030", name:"内藤", team: "team_u" },
+    "u09": { pass: "3131", name:"小野寺", team: "team_u" },
+    "u10": { pass: "3232", name:"関原", team: "team_u" },
+    "u11": { pass: "3333", name:"川名", team: "team_u" },
+    "u12": { pass: "3434", name:"石井", team: "team_u" },
+    "u13": { pass: "3535", name:"矢野", team: "team_u" },
+    "u14": { pass: "3636", name:"村上", team: "team_u" },
     "t01": { pass: "test", name:"デバッグ", team: "team_t"}
 };
 
