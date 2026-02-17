@@ -24,6 +24,8 @@ export const TEAMS = {
     "team_a": { name: "アダチーム" },
     "team_b": { name: "樋口チーム" },
     "team_c": { name: "坂後チーム" },
+    "team_s": { name: "77/78期" },
+    "team_u": { name: "79期"},
     "team_t": { name: "デバッグ用"}
 };
 
