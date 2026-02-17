@@ -8,18 +8,26 @@
     <style>
         .food-container { text-align: center; margin-top: 20px; }
         
-        /* 右下を起点にするためのFlex設定
-           - column-reverse: 下から上へ
-           - row-reverse: 右から左へ
+        /* 横はみ出し対策：スクロール可能なラッパー */
+        .grid-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 下から上へ並べる (column-reverse)
+           右から左へ並べる (row-reverse)
         */
         #seat-grid {
             display: inline-flex;
             flex-direction: column-reverse; 
             gap: 10px;
-            padding: 20px;
+            padding: 15px;
             background: #f9f9f9;
             border-radius: 12px;
-            margin: 20px auto;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
         }
 
@@ -30,17 +38,18 @@
         }
 
         .seat-box {
-            width: 50px;
-            height: 50px;
-            min-width: 50px;
+            width: 45px;
+            height: 45px;
+            min-width: 45px; /* サイズ固定 */
             border: 1px solid #aaa;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.1em;
+            font-size: 1em;
             background: #fff;
             border-radius: 6px;
             box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            box-sizing: border-box;
         }
 
         /* 自分の席を赤く強調 */
@@ -49,29 +58,17 @@
             color: white !important;
             font-weight: bold;
             border: 2px solid #b30000;
-            transform: scale(1.15);
+            transform: scale(1.1);
             z-index: 10;
-            box-shadow: 0 0 15px rgba(255, 77, 77, 0.4);
+            box-shadow: 0 0 12px rgba(255, 77, 77, 0.4);
         }
 
-        /* 廊下：下から数えて2行ごとに上側にマージンを作る */
+        /* 廊下：下から数えて2行ごとに隙間を空ける */
         .corridor {
-            margin-top: 35px; 
+            margin-top: 30px; 
         }
 
-        .off-message-area { 
-            text-align: center; 
-            padding: 100px 20px; 
-            font-size: 1.6em; 
-            font-weight: bold; 
-            color: #aaa; 
-        }
-
-        #seat-n {
-            font-size: 2.2em;
-            color: #ff4d4d;
-            margin: 0 5px;
-        }
+        .off-message-area { text-align: center; padding: 100px 20px; font-size: 1.5em; color: #aaa; }
     </style>
 </head>
 <body>
@@ -89,13 +86,16 @@
 
         <div id="food-content" class="food-container" style="display:none;">
             <h2>本日の座席</h2>
-            <p>あなたの席: <strong id="seat-n">--</strong> 番</p>
-            <div id="seat-grid"></div>
+            <p>あなたの席: <strong id="seat-n" style="font-size: 2em; color: #ff4d4d;">--</strong> 番</p>
+            
+            <div class="grid-wrapper">
+                <div id="seat-grid"></div>
+            </div>
+            
+            <p style="font-size: 0.8em; color: #888; margin-top: 10px;">※右下が1番です。表は横にスクロールできます。</p>
         </div>
 
-        <div id="food-off" class="off-message-area" style="display:none;">
-            時間外です
-        </div>
+        <div id="food-off" class="off-message-area" style="display:none;">時間外です</div>
     </div>
 
     <script type="module">
@@ -106,72 +106,65 @@
         if (!user) {
             window.location.href = 'login.html';
         } else {
-            // ヘッダー情報の表示
             document.getElementById('display-team').innerText = user.teamName;
             document.getElementById('display-name').innerText = user.name;
 
             let config = {};
             let myNum = null;
 
-            // 1. 設定値（settings）をリアルタイム監視
             onValue(ref(db, 'settings'), (snap) => {
                 config = snap.val() || {};
-                updateDisplay();
+                updateView();
             });
 
-            // 2. 自分の席番号（user_stats）をリアルタイム監視
             onValue(ref(db, `user_stats/${user.id}/food`), (snap) => {
                 myNum = snap.val();
                 document.getElementById('seat-n').innerText = myNum || "--";
-                updateDisplay();
+                updateView();
             });
 
-            // 表示の切り替え判定
-            function updateDisplay() {
+            function updateView() {
                 const isFood = config.isfood === true;
                 document.getElementById('food-content').style.display = isFood ? 'block' : 'none';
                 document.getElementById('food-off').style.display = isFood ? 'none' : 'block';
-                
                 if (isFood) renderGrid();
             }
 
-            // グリッドの描画
             function renderGrid() {
                 const grid = document.getElementById('seat-grid');
                 grid.innerHTML = "";
                 
-                // 数値変換（文字列で届いても計算できるようにする）
                 const rows = Number(config.rows) || 1;
                 const cols = Number(config.cols) || 1;
-                const start = Number(config.start_num) || 1;
-                const end = Number(config.end_num) || (start + rows * cols - 1);
+                // 注意: 部屋の物理的な番号は常に1から開始するように固定します
+                const end = Number(config.end_num) || (rows * cols);
 
                 for (let r = 1; r <= rows; r++) {
                     const rowDiv = document.createElement('div');
                     rowDiv.className = "grid-row";
                     
-                    // 下から数えて（r=1が最下段）2行ごとに廊下を追加
+                    // 2行ごとに廊下を入れる
                     if (r % 2 === 0 && r < rows) {
                         rowDiv.classList.add('corridor');
                     }
 
                     for (let c = 1; c <= cols; c++) {
-                        // 右下を起点とした連番計算
-                        const seatNum = start + ((r - 1) * cols + (c - 1));
+                        // 【重要】右下を1番として計算（r=1, c=1 が 1番）
+                        const seatNum = (r - 1) * cols + c;
                         
                         const box = document.createElement('div');
                         box.className = "seat-box";
 
-                        // 終了番号（end_num）以下の時だけ表示
+                        // 管理画面で設定した終了番号までのマスを表示
                         if (seatNum <= end) {
                             box.innerText = seatNum;
 
-                            // 自分の番号と一致する場合（型を揃えて比較）
+                            // 自分の当選番号と一致したら赤くする
                             if (Number(seatNum) === Number(myNum)) {
                                 box.classList.add('my-seat');
                             }
                         } else {
-                            // 範囲外のマスは透明にしてレイアウトだけ維持
+                            // 範囲外は空枠にするか非表示（ここでは透明化）
                             box.style.border = "none";
                             box.style.background = "transparent";
                             box.style.boxShadow = "none";
@@ -184,7 +177,6 @@
                 }
             }
         }
-
         document.getElementById('logout-link').onclick = (e) => { 
             e.preventDefault();
             localStorage.removeItem('userId'); 
