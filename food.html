@@ -7,45 +7,57 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .food-container { text-align: center; margin-top: 20px; }
-        /* 右下を1番にするための設定:
-           - column-reverse: 下から上へ並べる
-           - row-reverse: 右から左へ並べる
-        */
+        
+        /* グリッド全体：下から上に並べる */
         #seat-grid {
             display: flex;
             flex-direction: column-reverse; 
-            gap: 8px;
+            gap: 10px;
             align-items: center;
             margin: 20px auto;
-            padding: 10px;
+            padding: 15px;
+            width: fit-content; /* 中身に合わせて幅を固定 */
         }
+
+        /* 各行：右から左に並べる */
         .grid-row {
             display: flex;
             flex-direction: row-reverse; 
-            gap: 8px;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
         }
+
         .seat-box {
-            width: 45px;
-            height: 45px;
-            border: 1px solid #999;
+            width: 50px;
+            height: 50px;
+            border: 1px solid #aaa;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8em;
+            font-size: 1.1em;
             background: #fff;
-            border-radius: 4px;
+            border-radius: 6px;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
         }
+
+        /* 自分の席：赤く強調 */
         .seat-box.my-seat {
             background: #ff4d4d !important;
-            color: white;
+            color: white !important;
             font-weight: bold;
             border: 2px solid #b30000;
-            transform: scale(1.1);
+            transform: scale(1.15);
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+            z-index: 10;
         }
-        /* 廊下: 下から数えて2行ごとに隙間を空ける */
+
+        /* 廊下：2行ごとに隙間を空ける（下から数える） */
         .corridor {
-            margin-bottom: 30px; 
+            margin-bottom: 35px; 
         }
+
         .off-message-area { text-align: center; padding: 100px 20px; font-size: 1.5em; color: #aaa; }
     </style>
 </head>
@@ -64,7 +76,7 @@
 
         <div id="food-content" class="food-container" style="display:none;">
             <h2>本日の座席</h2>
-            <p>あなたの席: <strong id="seat-n" style="font-size: 1.8em; color: #ff4d4d;">--</strong> 番</p>
+            <p>あなたの席: <strong id="seat-n" style="font-size: 2em; color: #ff4d4d;">--</strong> 番</p>
             <div id="seat-grid"></div>
         </div>
 
@@ -83,55 +95,69 @@
             document.getElementById('display-name').innerText = user.name;
 
             let config = {};
-            let myNum = 0;
+            let myNum = null;
 
-            // 設定と席番号を監視
+            // データの読み込み
             onValue(ref(db, 'settings'), (snap) => {
                 config = snap.val() || {};
-                const isFood = config.isfood || false;
-                document.getElementById('food-content').style.display = isFood ? 'block' : 'none';
-                document.getElementById('food-off').style.display = isFood ? 'none' : 'block';
-                renderGrid();
+                checkDisplay();
             });
 
             onValue(ref(db, `user_stats/${user.id}/food`), (snap) => {
                 myNum = snap.val();
                 document.getElementById('seat-n').innerText = myNum || "--";
-                renderGrid();
+                checkDisplay();
             });
+
+            function checkDisplay() {
+                const isFood = config.isfood || false;
+                document.getElementById('food-content').style.display = isFood ? 'block' : 'none';
+                document.getElementById('food-off').style.display = isFood ? 'none' : 'block';
+                if (isFood) renderGrid();
+            }
 
             function renderGrid() {
                 const grid = document.getElementById('seat-grid');
                 grid.innerHTML = "";
                 
-                const rows = config.rows || 1;
-                const cols = config.cols || 1;
-                const start = config.start_num || 1;
+                // 数値として確実に取得
+                const rows = Number(config.rows) || 1;
+                const cols = Number(config.cols) || 1;
+                const start = Number(config.start_num) || 1;
 
                 for (let r = 1; r <= rows; r++) {
                     const rowDiv = document.createElement('div');
                     rowDiv.className = "grid-row";
                     
-                    // 下から数えて（r=1が最下行）、偶数行の後に廊下を入れる
+                    // 下から数えて2行ごとに廊下
                     if (r % 2 === 0 && r < rows) {
                         rowDiv.classList.add('corridor');
                     }
 
                     for (let c = 1; c <= cols; c++) {
-                        // 右下(r=1, c=1)を起点に番号を振る
+                        // 右下(r=1, c=1)を起点にした番号計算
                         const seatNum = start + ((r - 1) * cols + (c - 1));
+                        
                         const box = document.createElement('div');
                         box.className = "seat-box";
                         box.innerText = seatNum;
 
-                        if (seatNum === myNum) box.classList.add('my-seat');
+                        // 型が違っても比較できるように == を使用
+                        if (seatNum == myNum) {
+                            box.classList.add('my-seat');
+                        }
+                        
                         rowDiv.appendChild(box);
                     }
                     grid.appendChild(rowDiv);
                 }
             }
         }
-        document.getElementById('logout-link').onclick = () => { localStorage.removeItem('userId'); window.location.href = 'login.html'; };
+        document.getElementById('logout-link').onclick = (e) => { 
+            e.preventDefault();
+            localStorage.removeItem('userId'); 
+            window.location.href = 'login.html'; 
+        };
     </script>
 </body>
 </html>
