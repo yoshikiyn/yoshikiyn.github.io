@@ -73,7 +73,7 @@
         import { db, TEAMS } from './config.js';
         import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        const USER_IDS = ['a01','a02','a03','a04','a05','b01','b02','b03','b04','b05','c01','c02','c03','c04'];
+        const USER_IDS = ['a01','a02','a03','a04','a05','b01','b02','b03','b04','b05','c01','c02','c03','c04','u01','u02','u03','u04','u05','u06','u07','u08','u09','u10','u11','u12','u13','u14','s01','s02','s03','s04','s05','s06','s07','s08'];
 
         onValue(ref(db, 'teams'), (snap) => {
             const data = snap.val() || {};
