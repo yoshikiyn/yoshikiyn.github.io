@@ -9,12 +9,10 @@
         .admin-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; }
         .admin-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
         .admin-row strong { font-size: 1.2em; color: #28a745; }
-        input[type="number"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="number"], select { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; width: 80px; }
         .btn-save { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-save:active { background: #0056b3; }
-        .btn-shuffle { background: #e67e22; margin-top: 20px; } /* オレンジ色 */
+        .btn-shuffle { background: #e67e22; margin-top: 20px; }
         .current-status { font-size: 0.9em; color: #666; text-align: center; margin-bottom: 10px; }
-        .toggle-row { background: #f8f9fa; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -22,7 +20,7 @@
         const ADMIN_PASSWORD = "admin";
         const input = prompt("管理用パスワードを入力してください");
         if (input !== ADMIN_PASSWORD) {
-            alert("パスワードが違います。アクセス権限がありません。");
+            alert("パスワードが違います。");
             window.location.href = "login.html";
         }
     </script>
@@ -38,48 +36,49 @@
         <div class="admin-section">
             <h2>スロット確率設定</h2>
             <div id="calc-rate-display" class="current-status">現在の計算レート: -- %</div>
-            
             <div class="admin-row">
                 <span>動作モード</span>
-                <select id="mode-select">
-                    <option value="auto">時間連動（自動）</option>
-                    <option value="manual">数値指定（手動上書き）</option>
+                <select id="mode-select" style="width: auto;">
+                    <option value="auto">時間連動（自動V字）</option>
+                    <option value="manual">数値指定（手動）</option>
                 </select>
             </div>
-
-            <div id="manual-area" class="admin-row">
-                <span>手動設定レート</span>
-                <div><input type="number" id="manual-rate" min="0" max="100"> %</div>
+            <div class="admin-row">
+                <span>手動 / 自動最小(12:00)</span>
+                <input type="number" id="auto-min">
             </div>
-
-            <div id="auto-area">
-                <div class="admin-row">
-                    <span>自動最小値 (12:00)</span>
-                    <div><input type="number" id="auto-min" min="0" max="100"> %</div>
-                </div>
-                <div class="admin-row">
-                    <span>自動最大値 (00:00)</span>
-                    <div><input type="number" id="auto-max" min="0" max="100"> %</div>
-                </div>
+            <div class="admin-row">
+                <span>自動最大(00:00)</span>
+                <input type="number" id="auto-max">
             </div>
             <button id="save-settings" class="btn-save">スロット設定を保存</button>
         </div>
 
         <div class="admin-section">
-            <h2>席順管理</h2>
-            
-            <div class="admin-row toggle-row">
-                <span>席順画面を表示する(isfood)</span>
-                <input type="checkbox" id="isfood-toggle" style="transform: scale(1.5);">
+            <h2>席順グリッド管理</h2>
+            <div class="admin-row" style="background:#f9f9f9;">
+                <span>席順を表示する</span>
+                <input type="checkbox" id="isfood-toggle">
             </div>
-
             <div class="admin-row">
-                <span>最大席数 (1～N)</span>
-                <div><input type="number" id="max-seats" value="20" min="14"></div>
+                <span>列数 (横の数)</span>
+                <input type="number" id="grid-cols" value="4">
             </div>
-
-            <button id="shuffle-seats" class="btn-save btn-shuffle">席順をシャッフルして割り当て</button>
-            <p style="font-size: 0.8em; color: #d35400; margin-top: 10px;">※ボタンを押すと、全員の席番号が即座に更新されます。</p>
+            <div class="admin-row">
+                <span>行数 (縦の数)</span>
+                <input type="number" id="grid-rows" value="6">
+            </div>
+            <div class="admin-row">
+                <span>番号範囲 (開始)</span>
+                <input type="number" id="start-num" value="1">
+            </div>
+            <div class="admin-row">
+                <span>番号範囲 (終了)</span>
+                <input type="number" id="end-num" value="24">
+            </div>
+            <button id="save-food-settings" class="btn-save" style="background:#28a745;">グリッド設定のみ保存</button>
+            
+            <button id="shuffle-seats" class="btn-save btn-shuffle">範囲内でランダムに席を割り当て</button>
         </div>
         
         <p style="text-align: center;"><a href="shop.html">ショップ画面へ戻る</a></p>
@@ -89,114 +88,78 @@
         import { db, TEAMS } from './config.js';
         import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        // 対象ユーザーリスト
-        const USER_IDS = [
-            'a01','a02','a03','a04','a05',
-            'b01','b02','b03','b04','b05',
-            'c01','c02','c03','c04'
-        ];
+        const USER_IDS = ['a01','a02','a03','a04','a05','b01','b02','b03','b04','b05','c01','c02','c03','c04'];
 
-        // --- チームポイント表示 ---
-        const listDiv = document.getElementById('admin-list');
-        onValue(ref(db, 'teams'), (snapshot) => {
-            const data = snapshot.val() || {};
+        // ポイント表示
+        onValue(ref(db, 'teams'), (snap) => {
+            const data = snap.val() || {};
+            const listDiv = document.getElementById('admin-list');
             listDiv.innerHTML = "";
-            Object.keys(TEAMS).forEach(teamId => {
-                const points = (data[teamId] && data[teamId].points !== undefined) ? data[teamId].points : 0;
+            Object.keys(TEAMS).forEach(tid => {
+                const p = (data[tid] && data[tid].points !== undefined) ? data[tid].points : 0;
                 const row = document.createElement('div');
                 row.className = "admin-row";
-                row.innerHTML = `
-                    <span>${TEAMS[teamId].name}</span>
-                    <div>
-                        <strong>${points} P</strong>
-                        <button id="btn-${teamId}">変更</button>
-                    </div>
-                `;
+                row.innerHTML = `<span>${TEAMS[tid].name}</span><div><strong>${p} P</strong> <button id="btn-${tid}">変更</button></div>`;
                 listDiv.appendChild(row);
-                document.getElementById(`btn-${teamId}`).onclick = () => {
-                    const newVal = prompt(`${TEAMS[teamId].name} のポイントを入力`, points);
-                    if (newVal !== null && !isNaN(parseInt(newVal))) {
-                        set(ref(db, `teams/${teamId}/points`), parseInt(newVal));
-                    }
+                document.getElementById(`btn-${tid}`).onclick = () => {
+                    const v = prompt("ポイント入力", p);
+                    if(v !== null) set(ref(db, `teams/${tid}/points`), parseInt(v));
                 };
             });
         });
 
-        // --- 設定値の読み込み ---
-        get(ref(db, 'settings')).then((snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                document.getElementById('mode-select').value = data.mode || "auto";
-                document.getElementById('manual-rate').value = data.manual_rate || 0;
-                document.getElementById('auto-min').value = data.auto_min || 0;
-                document.getElementById('auto-max').value = data.auto_max || 0;
-                document.getElementById('isfood-toggle').checked = data.isfood || false;
-                updateCalcDisplay(data);
-            }
+        // 設定読み込み
+        get(ref(db, 'settings')).then(snap => {
+            if(!snap.exists()) return;
+            const d = snap.val();
+            document.getElementById('mode-select').value = d.mode || "auto";
+            document.getElementById('auto-min').value = d.auto_min || 0;
+            document.getElementById('auto-max').value = d.auto_max || 0;
+            document.getElementById('isfood-toggle').checked = d.isfood || false;
+            document.getElementById('grid-cols').value = d.cols || 4;
+            document.getElementById('grid-rows').value = d.rows || 6;
+            document.getElementById('start-num').value = d.start_num || 1;
+            document.getElementById('end-num').value = d.end_num || 24;
         });
 
-        function updateCalcDisplay(data) {
-            const display = document.getElementById('calc-rate-display');
-            if (data.mode === 'manual') {
-                display.innerText = `現在の設定: 手動 (${data.manual_rate}%)`;
-            } else {
-                const now = new Date();
-                const totalMin = now.getHours() * 60 + now.getMinutes();
-                const ratio = Math.abs(totalMin - 720) / 720; // 12:00ベースのV字
-                const rate = data.auto_min + (data.auto_max - data.auto_min) * ratio;
-                display.innerText = `現在の計算レート: 約 ${rate.toFixed(1)}% (自動V字)`;
-            }
-        }
+        // 保存（一括）
+        document.getElementById('save-settings').onclick = () => saveAll();
+        document.getElementById('save-food-settings').onclick = () => saveAll();
 
-        // --- スロット設定保存 ---
-        document.getElementById('save-settings').onclick = () => {
-            const newData = {
+        function saveAll() {
+            const d = {
                 mode: document.getElementById('mode-select').value,
-                manual_rate: parseInt(document.getElementById('manual-rate').value) || 0,
                 auto_min: parseInt(document.getElementById('auto-min').value) || 0,
                 auto_max: parseInt(document.getElementById('auto-max').value) || 0,
-                isfood: document.getElementById('isfood-toggle').checked
+                isfood: document.getElementById('isfood-toggle').checked,
+                cols: parseInt(document.getElementById('grid-cols').value) || 4,
+                rows: parseInt(document.getElementById('grid-rows').value) || 6,
+                start_num: parseInt(document.getElementById('start-num').value) || 1,
+                end_num: parseInt(document.getElementById('end-num').value) || 24
             };
-            update(ref(db, 'settings'), newData).then(() => {
-                alert("設定を保存しました！");
-                updateCalcDisplay(newData);
-            });
-        };
+            update(ref(db, 'settings'), d).then(() => alert("保存しました"));
+        }
 
-        // --- 席順シャッフル割り当てロジック ---
+        // シャッフル
         document.getElementById('shuffle-seats').onclick = () => {
-            const maxSeat = parseInt(document.getElementById('max-seats').value);
-            if (maxSeat < USER_IDS.length) {
-                alert(`席数が足りません！最低 ${USER_IDS.length} 以上にしてください。`);
-                return;
-            }
+            const s = parseInt(document.getElementById('start-num').value);
+            const e = parseInt(document.getElementById('end-num').value);
+            const rangeSize = e - s + 1;
 
-            if (!confirm("全員の席番号をランダムに割り当て直します。よろしいですか？")) return;
+            if(rangeSize < USER_IDS.length) return alert("範囲が狭すぎます");
+            if(!confirm("席をシャッフルしますか？")) return;
 
-            // 1. 1～maxSeat までの配列を作成
-            let numbers = [];
-            for (let i = 1; i <= maxSeat; i++) {
-                numbers.push(i);
-            }
-
-            // 2. フィッシャー–イェーツのシャッフル
-            for (let i = numbers.length - 1; i > 0; i--) {
+            let pool = Array.from({length: rangeSize}, (_, i) => s + i);
+            for (let i = pool.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+                [pool[i], pool[j]] = [pool[j], pool[i]];
             }
 
-            // 3. ユーザーリストに順番に割り当て（一括アップデート用オブジェクト作成）
             const updates = {};
-            USER_IDS.forEach((userId, index) => {
-                updates[`user_stats/${userId}/food`] = numbers[index];
+            USER_IDS.forEach((uid, idx) => {
+                updates[`user_stats/${uid}/food`] = pool[idx];
             });
-
-            // 4. Firebaseを更新
-            update(ref(db), updates).then(() => {
-                alert("席順のシャッフルが完了しました！");
-            }).catch(err => {
-                alert("シャッフル失敗: " + err.message);
-            });
+            update(ref(db), updates).then(() => alert("シャッフル完了"));
         };
     </script>
 </body>
